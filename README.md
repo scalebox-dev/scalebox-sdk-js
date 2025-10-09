@@ -378,6 +378,14 @@ npm run test:integration
 ![Windows](https://img.shields.io/badge/Windows-0078D6?logo=windows&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)
 
+## 发布流程
+
+1. 手动更新 `package.json` 中的版本号
+2. 更新 `CHANGELOG.md` 记录变更
+3. 提交更改并推送到 main 分支
+4. CI 自动检查版本是否已存在
+5. 自动发布到 npm 并创建 GitHub Release
+
 ## 许可证
 本项目遵循 MIT 许可证条款。
 

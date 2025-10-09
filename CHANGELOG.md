@@ -9,64 +9,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Initial release of Scalebox JavaScript SDK
-- Support for multi-language code execution (Python, R, Node.js, TypeScript, Java, Bash)
-- Synchronous and asynchronous sandbox execution
-- Persistent context management across executions
-- Callback subscriptions for stdout, stderr, results, and errors
-- Rich result formats (text, html, markdown, svg, png, jpeg, pdf, latex, json, javascript, chart, data)
-- E2B API compatibility for seamless migration
-- Desktop automation capabilities
-- File system operations
-- Command execution with background support
-- Pseudo-terminal (PTY) support
-- Comprehensive test suite with real environment testing
-- TypeScript support with full type definitions
-- gRPC and REST API clients
-- Code interpreter with context management
+- Multi-language support (Python, R, JavaScript, TypeScript, Java, Bash)
+- Synchronous and asynchronous execution modes
+- Persistent context management
+- Rich result formats (text, html, markdown, svg, png, jpeg, pdf, latex, json, etc.)
+- Comprehensive test suite
+- TypeScript definitions
+- Professional documentation with badges
 
-### Features
-- **Multi-language Support**: Python, R, Node.js, Deno/TypeScript, Java/IJAVA, Bash
-- **Sandbox Management**: Create, connect, list, pause, resume, and kill sandboxes
-- **File Operations**: Read, write, list, move, remove files and directories
-- **Process Management**: Run commands synchronously or in background
-- **Context Persistence**: Maintain variables and state across executions
-- **Real-time Callbacks**: Subscribe to stdout, stderr, results, and errors
-- **Rich Results**: Support for multiple output formats
-- **Desktop Automation**: GUI application testing and automation
-- **Network Operations**: File upload/download capabilities
+### Changed
+- N/A
+
+### Fixed
+- N/A
 
 ### Security
-- Secure API key management
-- Environment variable support
-- Input validation and sanitization
-- Timeout protection
-- Resource limits
+- Security audit passed
+- No hardcoded API keys or secrets
+- Secure dependency management
 
-### Documentation
-- Comprehensive README with examples
-- API documentation
-- Migration guide from E2B
-- Testing documentation
-- Authentication guide
-- Security best practices
+---
 
-## [1.0.0] - 2024-01-XX
+## [0.0.1] - 2025-10-09
 
 ### Added
 - Initial release
 - Core SDK functionality
-- Multi-language support
-- E2B compatibility
-- Comprehensive documentation
-- Test suite
+- Multi-language kernel support
+- Comprehensive testing infrastructure
+- CI/CD pipeline with automated publishing
+- Professional documentation and badges
+- Version management scripts
+- GitHub Actions workflow
+- npm package publication
 
 ### Security
-- API key protection
-- Secure communication
-- Input validation
-
-### Documentation
-- Complete API documentation
-- Usage examples
-- Migration guide
-- Security guidelines
+- All dependencies updated to latest secure versions
+- No vulnerabilities detected
+- Secure API key handling through environment variables

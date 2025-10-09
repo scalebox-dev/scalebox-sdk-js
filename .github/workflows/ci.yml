@@ -130,6 +130,21 @@ jobs:
     - name: Build package
       run: pnpm run build
     
+    - name: Get version
+      id: get_version
+      run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+    
+    - name: Check if version exists on npm
+      run: |
+        VERSION=$(node -p "require('./package.json').version")
+        echo "Checking if version $VERSION already exists on npm..."
+        if npm view @scalebox/sdk@$VERSION version > /dev/null 2>&1; then
+          echo "❌ Version $VERSION already exists on npm. Please update version in package.json"
+          exit 1
+        else
+          echo "✅ Version $VERSION is available for publishing"
+        fi
+    
     - name: Publish to npm
       run: |
         echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" > ~/.npmrc
@@ -137,3 +152,40 @@ jobs:
         pnpm publish --access public
       env:
         NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+    
+    - name: Create Git tag
+      run: |
+        VERSION=$(node -p "require('./package.json').version")
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git tag -a "v$VERSION" -m "Release version $VERSION"
+        git push origin "v$VERSION"
+    
+    - name: Create GitHub Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: v${{ steps.get_version.outputs.version }}
+        release_name: Release v${{ steps.get_version.outputs.version }}
+        body: |
+          ## 🚀 Release v${{ steps.get_version.outputs.version }}
+          
+          ### 📦 Package Information
+          - **Package**: @scalebox/sdk
+          - **Version**: ${{ steps.get_version.outputs.version }}
+          - **Registry**: [npmjs.com](https://www.npmjs.com/package/@scalebox/sdk)
+          
+          ### 📋 Changes
+          - Automated release from CI/CD pipeline
+          - All tests passed ✅
+          - Security audit passed ✅
+          - Build successful ✅
+          
+          ### 🔗 Links
+          - [npm Package](https://www.npmjs.com/package/@scalebox/sdk)
+          - [Documentation](https://github.com/scalebox-dev/scalebox-sdk-js#readme)
+          - [Changelog](https://github.com/scalebox-dev/scalebox-sdk-js/blob/main/CHANGELOG.md)
+        draft: false
+        prerelease: false
