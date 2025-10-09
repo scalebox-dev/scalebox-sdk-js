@@ -276,8 +276,8 @@ secrets.json
 config.json
 .secrets
 
-# Generated files
-generated/
+# Generated files (but keep gRPC generated files for SDK)
+# generated/  # Commented out to include gRPC files
 *.generated.*
 
 # Lock files (keep pnpm-lock.yaml but ignore others)
@@ -444,8 +444,8 @@ secrets.json
 config.json
 .secrets
 
-# Generated files
-generated/
+# Generated files (but keep gRPC generated files for SDK)
+# generated/  # Commented out to include gRPC files
 *.generated.*
 
 # Lock files (keep pnpm-lock.yaml but ignore others)
