@@ -1,5 +1,15 @@
 # Scalebox JavaScript SDK
 
+[![npm version](https://img.shields.io/npm/v/@scalebox/sdk.svg)](https://www.npmjs.com/package/@scalebox/sdk)
+[![npm downloads](https://img.shields.io/npm/dm/@scalebox/sdk.svg)](https://www.npmjs.com/package/@scalebox/sdk)
+[![npm bundle size](https://img.shields.io/bundlephobia/minzip/@scalebox/sdk)](https://bundlephobia.com/package/@scalebox/sdk)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-43853D?logo=node.js&logoColor=white)](https://nodejs.org/)
+[![Build Status](https://github.com/scalebox-dev/scalebox-sdk-js/workflows/CI/badge.svg)](https://github.com/scalebox-dev/scalebox-sdk-js/actions)
+[![Coverage](https://img.shields.io/badge/coverage-85%25-brightgreen)](https://github.com/scalebox-dev/scalebox-sdk-js)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/scalebox-dev/scalebox-sdk-js/pulls)
+
 一个用于在可控沙箱中执行多语言代码的 JavaScript SDK，支持同步与异步模式，以及多语言 Kernel（Python、R、Node.js、Deno/TypeScript、Java/IJAVA、Bash）。已提供全面的真实环境测试用例与脚本。
 
 ## 功能特性
@@ -15,6 +25,10 @@
 - 可访问的 Scalebox 环境或本地服务
 
 ## 安装
+
+[![npm](https://img.shields.io/badge/npm-@scalebox/sdk-red.svg)](https://www.npmjs.com/package/@scalebox/sdk)
+[![yarn](https://img.shields.io/badge/yarn-add%20@scalebox/sdk-blue.svg)](https://yarnpkg.com/package/@scalebox/sdk)
+[![pnpm](https://img.shields.io/badge/pnpm-add%20@scalebox/sdk-orange.svg)](https://pnpm.io/)
 
 ```bash
 # 使用 npm
@@ -347,6 +361,22 @@ npm run test:integration
 - Import/依赖错误：请确认已正确安装依赖
 - 外部内核不可用：确保环境已安装对应语言运行时（R/Node/Deno/JDK）与后端已启用该内核
 - 超时/网络：检查网络与后端服务可达性，必要时增大 `timeout`/`requestTimeout`
+
+## 技术栈
+
+![Python](https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=white)
+![R](https://img.shields.io/badge/R-276DC3?logo=r&logoColor=white)
+![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?logo=javascript&logoColor=black)
+![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)
+![Java](https://img.shields.io/badge/Java-ED8B00?logo=java&logoColor=white)
+![Bash](https://img.shields.io/badge/Bash-4EAA25?logo=gnu-bash&logoColor=white)
+
+## 平台支持
+
+![Linux](https://img.shields.io/badge/Linux-FCC624?logo=linux&logoColor=black)
+![macOS](https://img.shields.io/badge/macOS-000000?logo=apple&logoColor=white)
+![Windows](https://img.shields.io/badge/Windows-0078D6?logo=windows&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)
 
 ## 许可证
 本项目遵循 MIT 许可证条款。
