@@ -27,7 +27,11 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: ${{ matrix.node-version }}
-        cache: 'pnpm'
+    
+    - name: Verify lockfile exists
+      run: |
+        ls -la pnpm-lock.yaml
+        echo "Lockfile found, proceeding with installation"
     
     - name: Install dependencies
       run: pnpm install --frozen-lockfile
@@ -67,7 +71,11 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: 20
-        cache: 'pnpm'
+    
+    - name: Verify lockfile exists
+      run: |
+        ls -la pnpm-lock.yaml
+        echo "Lockfile found, proceeding with installation"
     
     - name: Install dependencies
       run: pnpm install --frozen-lockfile
@@ -109,8 +117,12 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: 20
-        cache: 'pnpm'
         registry-url: 'https://registry.npmjs.org'
+    
+    - name: Verify lockfile exists
+      run: |
+        ls -la pnpm-lock.yaml
+        echo "Lockfile found, proceeding with installation"
     
     - name: Install dependencies
       run: pnpm install --frozen-lockfile
