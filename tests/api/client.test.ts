@@ -166,7 +166,7 @@ describe('API Client', () => {
     testSandboxId = createdSandbox.sandboxId
     
     await expect(
-      client.updateSandboxTimeout(createdSandbox.sandboxId, 600)
+      client.updateSandboxTimeout(createdSandbox.sandboxId, 600000) // 10 minutes in milliseconds
     ).resolves.not.toThrow()
   })
 })

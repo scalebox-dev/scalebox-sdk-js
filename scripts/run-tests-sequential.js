@@ -25,7 +25,7 @@ const colors = {
 // 测试目录配置
 const testDirs = [
   { name: 'api', pattern: 'tests/api/**', env: {} },
-  { name: 'code-interpreter', pattern: 'tests/code_interpreter/**', env: {} },
+  { name: 'code-interpreter', pattern: 'tests/code-interpreter/**', env: {} },
   { name: 'desktop', pattern: 'tests/desktop/**', env: {} },
   { name: 'sandbox', pattern: 'tests/sandbox/**', env: {} },
   { name: 'integration', pattern: 'tests/integration/**', env: { SCALEBOX_INTEGRATION_TEST: '1' } }
@@ -52,7 +52,7 @@ async function runTestDir(testDir, skipIntegration = false) {
 
   return new Promise((resolve) => {
     const env = { ...process.env, ...testDir.env };
-    const vitest = spawn('npx', ['vitest', 'run', testDir.pattern], {
+    const vitest = spawn('pnpm', ['exec', 'vitest', 'run', testDir.pattern], {
       cwd: projectRoot,
       env,
       stdio: 'inherit'
