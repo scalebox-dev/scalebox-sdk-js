@@ -131,6 +131,9 @@ jobs:
       run: pnpm run build
     
     - name: Publish to npm
-      run: pnpm publish --access public
+      run: |
+        echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" > ~/.npmrc
+        echo "@scalebox:registry=https://registry.npmjs.org/" >> ~/.npmrc
+        pnpm publish --access public
       env:
         NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
