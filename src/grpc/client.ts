@@ -66,7 +66,7 @@ export class GrpcClient {
     envdAccessToken?: string
   ) {
     // Determine the gRPC address to use
-    let grpcAddress = connectionConfig.grpcAddress
+    let grpcAddress = connectionConfig.apiUrl
     
     // If a specific sandboxDomain is provided, use it instead
     if (sandboxDomain) {

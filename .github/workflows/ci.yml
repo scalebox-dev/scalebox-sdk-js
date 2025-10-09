@@ -37,7 +37,7 @@ jobs:
       run: pnpm install --frozen-lockfile
     
     - name: Run type check
-      run: pnpm run build --dry-run
+      run: pnpm exec tsc --noEmit
     
     - name: Run tests
       run: pnpm test:sequential:node:no-integration

@@ -9,6 +9,6 @@ plugins:
     out: ../../src/generated
     opt:
       - target=ts
-      - import_extension=js
+      - import_extension=ts
       - js_import_style=module
       - ts_nocheck=true
