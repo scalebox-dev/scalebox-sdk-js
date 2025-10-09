@@ -42,6 +42,7 @@
     "test:sequential:script:no-integration": "./scripts/run-tests-sequential.sh --no-integration",
     "test:sequential:node": "node scripts/run-tests-sequential.js",
     "test:sequential:node:no-integration": "node scripts/run-tests-sequential.js --no-integration",
+    "test:ci": "node scripts/run-ci-tests.js",
     "generate": "npm-run-all generate:*",
     "generate:grpc": "./scripts/generate-grpc.sh",
     "generate:api": "./scripts/generate-openapi.sh",

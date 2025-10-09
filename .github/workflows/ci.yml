@@ -39,8 +39,8 @@ jobs:
     - name: Run type check
       run: pnpm exec tsc --noEmit
     
-    - name: Run tests
-      run: pnpm test:sequential:node:no-integration
+    - name: Run CI tests
+      run: pnpm test:ci
       env:
         SCALEBOX_API_KEY: ${{ secrets.SCALEBOX_API_KEY }}
     
