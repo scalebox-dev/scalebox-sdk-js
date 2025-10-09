@@ -378,13 +378,54 @@ npm run test:integration
 ![Windows](https://img.shields.io/badge/Windows-0078D6?logo=windows&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)
 
-## 发布流程
+## 自动化发布流程
 
-1. 手动更新 `package.json` 中的版本号
-2. 更新 `CHANGELOG.md` 记录变更
-3. 提交更改并推送到 main 分支
-4. CI 自动检查版本是否已存在
-5. 自动发布到 npm 并创建 GitHub Release
+本项目使用 **semantic-release** 实现完全自动化的版本管理和发布。
+
+### 📝 提交规范
+
+使用 [Conventional Commits](https://www.conventionalcommits.org/) 规范：
+
+```bash
+# 新功能 (自动发布 minor 版本)
+git commit -m "feat: add new authentication method"
+
+# 修复 bug (自动发布 patch 版本)  
+git commit -m "fix: resolve timeout issue in sandbox"
+
+# 重大变更 (自动发布 major 版本)
+git commit -m "feat!: breaking change in API"
+
+# 文档更新 (不触发发布)
+git commit -m "docs: update installation guide"
+
+# 性能优化 (自动发布 patch 版本)
+git commit -m "perf: optimize memory usage"
+```
+
+### 🚀 发布流程
+
+1. **提交代码** 使用规范的 commit 信息
+2. **推送到 main** 分支
+3. **CI 自动处理**：
+   - ✅ 分析 commit 信息确定版本类型
+   - ✅ 自动更新版本号
+   - ✅ 生成 CHANGELOG.md
+   - ✅ 创建 Git 标签
+   - ✅ 发布到 npm
+   - ✅ 创建 GitHub Release
+
+### 📋 版本规则
+
+| Commit 类型 | 版本递增 | 示例 |
+|------------|---------|------|
+| `feat:` | minor (0.1.0) | 新功能 |
+| `fix:` | patch (0.0.1) | 修复 bug |
+| `perf:` | patch (0.0.1) | 性能优化 |
+| `feat!:` | major (1.0.0) | 重大变更 |
+| `docs:` | - | 文档更新 |
+| `chore:` | - | 构建/工具 |
+| `test:` | - | 测试相关 |
 
 ## 许可证
 本项目遵循 MIT 许可证条款。
