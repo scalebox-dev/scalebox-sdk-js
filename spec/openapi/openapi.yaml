@@ -1,0 +1,910 @@
+openapi: 3.0.3
+info:
+  title: Scalebox API
+  description: Scalebox Cloud Sandbox API
+  version: 1.0.0
+  contact:
+    name: Scalebox Team
+    url: https://scalebox.dev
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://api.scalebox.dev
+    description: Production server
+  - url: https://staging-api.scalebox.dev
+    description: Staging server
+
+paths:
+  /v1/sandboxes:
+    post:
+      summary: Create a new sandbox
+      description: Create a new sandbox instance
+      tags:
+        - Sandboxes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSandboxRequest'
+      responses:
+        '201':
+          description: Sandbox created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SandboxResponse'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    get:
+      summary: List sandboxes
+      description: Get list of sandboxes
+      tags:
+        - Sandboxes
+      parameters:
+        - name: project_id
+          in: query
+          schema:
+            type: string
+          description: Filter by project ID
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [created, starting, running, terminating, terminated, failed]
+          description: Filter by status
+        - name: owner_user_id
+          in: query
+          schema:
+            type: string
+          description: Filter by owner user ID (root users only)
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search in sandbox names
+        - name: sort_by
+          in: query
+          schema:
+            type: string
+          description: Sort by field
+        - name: sort_order
+          in: query
+          schema:
+            type: string
+            enum: [asc, desc]
+          description: Sort order
+        - name: limit
+          in: query
+          schema:
+            type: integer
+          description: Maximum number of results
+        - name: offset
+          in: query
+          schema:
+            type: integer
+          description: Number of results to skip
+      responses:
+        '200':
+          description: List of sandboxes
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      sandboxes:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/SandboxResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/sandboxes/{sandbox_id}:
+    get:
+      summary: Get sandbox details
+      description: Get details of a specific sandbox
+      tags:
+        - Sandboxes
+      parameters:
+        - name: sandbox_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Sandbox ID
+      responses:
+        '200':
+          description: Sandbox details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SandboxResponse'
+        '404':
+          description: Sandbox not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      summary: Update sandbox
+      description: Update sandbox settings (mainly timeout)
+      tags:
+        - Sandboxes
+      parameters:
+        - name: sandbox_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Sandbox ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSandboxRequest'
+      responses:
+        '200':
+          description: Sandbox updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Sandbox not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      summary: Delete sandbox
+      description: Delete a sandbox instance
+      tags:
+        - Sandboxes
+      parameters:
+        - name: sandbox_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Sandbox ID
+        - name: force
+          in: query
+          schema:
+            type: boolean
+            default: true
+          description: Force deletion even if sandbox is running
+      responses:
+        '202':
+          description: Sandbox deletion initiated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      sandbox_id:
+                        type: string
+                      status:
+                        type: string
+                      note:
+                        type: string
+                  message:
+                    type: string
+        '404':
+          description: Sandbox not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/sandboxes/{sandbox_id}/timeout:
+    put:
+      summary: Update sandbox timeout
+      description: Update the timeout for a sandbox
+      tags:
+        - Sandboxes
+      parameters:
+        - name: sandbox_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Sandbox ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SandboxTimeoutRequest'
+      responses:
+        '200':
+          description: Timeout updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      timeout:
+                        type: integer
+                      timeout_at:
+                        type: string
+                        format: date-time
+                      used_lifetime:
+                        type: integer
+                      remaining_time:
+                        type: integer
+                  message:
+                    type: string
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/sandboxes/{sandbox_id}/terminate:
+    post:
+      summary: Terminate sandbox
+      description: Terminate a sandbox (keeps it visible in database)
+      tags:
+        - Sandboxes
+      parameters:
+        - name: sandbox_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Sandbox ID
+        - name: force
+          in: query
+          schema:
+            type: boolean
+            default: false
+          description: Force termination
+      responses:
+        '202':
+          description: Sandbox termination initiated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      sandbox_id:
+                        type: string
+                      status:
+                        type: string
+                      note:
+                        type: string
+                  message:
+                    type: string
+
+  /v1/sandboxes/{sandbox_id}/start:
+    post:
+      summary: Start sandbox
+      description: Start a created sandbox
+      tags:
+        - Sandboxes
+      parameters:
+        - name: sandbox_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Sandbox ID
+      responses:
+        '200':
+          description: Sandbox started successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      domain:
+                        type: string
+                        description: Sandbox access domain
+                  message:
+                    type: string
+        '400':
+          description: Bad request (e.g., sandbox already running)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Sandbox not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/sandboxes/{sandbox_id}/stop:
+    post:
+      summary: Stop sandbox
+      description: Stop a running sandbox
+      tags:
+        - Sandboxes
+      parameters:
+        - name: sandbox_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Sandbox ID
+      responses:
+        '200':
+          description: Sandbox stopped successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Bad request (e.g., sandbox not running)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Sandbox not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/sandboxes/{sandbox_id}/deploy:
+    post:
+      summary: Deploy sandbox
+      description: Deploy a sandbox using driver-based deployment
+      tags:
+        - Sandboxes
+      parameters:
+        - name: sandbox_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Sandbox ID
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                cluster_id:
+                  type: string
+                  description: Target cluster ID (optional)
+                cpu_count:
+                  type: integer
+                  description: Override CPU count (optional)
+                memory_mb:
+                  type: integer
+                  description: Override memory in MB (optional)
+      responses:
+        '200':
+          description: Sandbox deployed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SandboxDeploymentResponse'
+                  message:
+                    type: string
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Sandbox not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/sandboxes/stats:
+    get:
+      summary: Get sandbox statistics
+      description: Get sandbox statistics for the current user
+      tags:
+        - Sandboxes
+      responses:
+        '200':
+          description: Sandbox statistics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SandboxStatsResponse'
+
+  /v1/sandboxes/batch-delete:
+    post:
+      summary: Batch delete sandboxes
+      description: Delete multiple sandboxes in a single request
+      tags:
+        - Sandboxes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchDeleteRequest'
+      responses:
+        '200':
+          description: Batch deletion results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/BatchDeleteResponse'
+                  message:
+                    type: string
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-KEY
+
+  schemas:
+    CreateSandboxRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Sandbox name
+        description:
+          type: string
+          description: Sandbox description
+        template:
+          type: string
+          description: Template name or ID (defaults to "base")
+        project_id:
+          type: string
+          description: Project ID (optional, defaults to user's default project)
+        cpu_count:
+          type: integer
+          minimum: 1
+          description: Number of CPU cores
+        memory_mb:
+          type: integer
+          minimum: 128
+          description: Memory in MB
+        storage_gb:
+          type: integer
+          minimum: 0
+          description: Storage in GB
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+          description: Flexible key-value metadata
+        timeout:
+          type: integer
+          minimum: 60
+          maximum: 86400
+          description: Timeout in seconds (defaults to 300)
+        env_vars:
+          type: object
+          additionalProperties:
+            type: string
+          description: Environment variables
+        secure:
+          type: boolean
+          default: true
+          description: Security setting
+        allow_internet_access:
+          type: boolean
+          default: true
+          description: Internet access setting
+        is_async:
+          type: boolean
+          default: false
+          description: When true, return immediately; when false, wait for running/failed state
+
+    UpdateSandboxRequest:
+      type: object
+      required:
+        - timeout
+      properties:
+        timeout:
+          type: integer
+          minimum: 1
+          description: New timeout in seconds (must be greater than current timeout)
+
+    SandboxTimeoutRequest:
+      type: object
+      required:
+        - timeout
+      properties:
+        timeout:
+          type: integer
+          minimum: 1
+          description: New timeout in seconds (must be >= already used lifetime)
+
+    SandboxResponse:
+      type: object
+      properties:
+        sandbox_id:
+          type: string
+          description: Unique sandbox identifier
+        name:
+          type: string
+          description: Sandbox name
+        description:
+          type: string
+          description: Sandbox description
+        template_id:
+          type: string
+          description: Template ID
+        template_name:
+          type: string
+          description: Template name
+        owner_user_id:
+          type: string
+          description: Owner user ID
+        project_id:
+          type: string
+          description: Project ID
+        project_name:
+          type: string
+          description: Project name
+        cpu_count:
+          type: integer
+          description: Number of CPU cores
+        memory_mb:
+          type: integer
+          description: Memory in MB
+        storage_gb:
+          type: integer
+          description: Storage in GB
+        timeout:
+          type: integer
+          description: Timeout in seconds
+        secure:
+          type: boolean
+          description: Security setting
+        allow_internet_access:
+          type: boolean
+          description: Internet access setting
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+          description: Metadata key-value pairs
+        env_vars:
+          type: object
+          additionalProperties:
+            type: string
+          description: Environment variables
+        status:
+          type: string
+          enum: [created, starting, running, terminating, terminated, failed]
+          description: Current sandbox status
+        substatus:
+          type: string
+          enum: [allocating, deploying, initializing, waiting_ready, cleaning_resources, cleaning_data]
+          description: Detailed substatus for transitional states
+        reason:
+          type: string
+          description: Reason for current status or failure
+        started_at:
+          type: string
+          format: date-time
+          description: When sandbox started running
+          nullable: true
+        stopped_at:
+          type: string
+          format: date-time
+          description: When sandbox stopped
+          nullable: true
+        timeout_at:
+          type: string
+          format: date-time
+          description: When sandbox will timeout
+          nullable: true
+        ended_at:
+          type: string
+          format: date-time
+          description: When sandbox lifecycle ended
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+        sandbox_domain:
+          type: string
+          description: Sandbox access domain
+          nullable: true
+        envd_access_token:
+          type: string
+          description: Token for sandbox access
+          nullable: true
+        uptime:
+          type: integer
+          description: Uptime in seconds
+        # Kubernetes deployment information
+        cluster_id:
+          type: string
+          description: Kubernetes cluster ID where sandbox is deployed
+          nullable: true
+        namespace_id:
+          type: string
+          description: User namespace ID in the cluster
+          nullable: true
+        pod_name:
+          type: string
+          description: Kubernetes pod name
+          nullable: true
+        pod_uid:
+          type: string
+          description: Kubernetes pod UID
+          nullable: true
+        pod_ip:
+          type: string
+          description: Pod IP address
+          nullable: true
+        node_name:
+          type: string
+          description: Node where pod is scheduled
+          nullable: true
+        container_name:
+          type: string
+          description: Container name within the pod
+          nullable: true
+        allocation_time:
+          type: string
+          format: date-time
+          description: When sandbox was allocated to cluster
+          nullable: true
+        last_pod_status:
+          type: string
+          description: Last known Kubernetes pod status
+          nullable: true
+        # State management information
+        deletion_in_progress:
+          type: boolean
+          description: Whether sandbox deletion is in progress
+          default: false
+        resources:
+          type: object
+          properties:
+            cpu:
+              type: integer
+              description: CPU cores allocated
+            memory:
+              type: integer
+              description: Memory in MB allocated
+            storage:
+              type: integer
+              description: Storage in GB allocated
+            bandwidth:
+              type: integer
+              description: Bandwidth allocation (placeholder)
+        cost:
+          type: object
+          properties:
+            hourlyRate:
+              type: number
+              format: float
+              description: Hourly rate for this sandbox
+            totalCost:
+              type: number
+              format: float
+              description: Total cost accumulated
+        owner:
+          type: object
+          properties:
+            user_id:
+              type: string
+              description: User ID of the owner
+            username:
+              type: string
+              description: Username of the owner
+            display_name:
+              type: string
+              description: Display name of the owner
+              nullable: true
+            email:
+              type: string
+              description: Email of the owner
+
+    SandboxDeploymentResponse:
+      type: object
+      properties:
+        sandbox_id:
+          type: string
+          description: Sandbox ID
+        cluster_id:
+          type: string
+          description: Cluster ID where sandbox is deployed
+        namespace:
+          type: string
+          description: Kubernetes namespace
+        access_url:
+          type: string
+          description: External access URL
+        internal_url:
+          type: string
+          description: Internal cluster URL
+        access_token:
+          type: string
+          description: Access token for the sandbox
+        status:
+          type: string
+          description: Deployment status
+        deployment_at:
+          type: string
+          format: date-time
+          description: Deployment timestamp
+        deployment:
+          type: string
+          description: Kubernetes deployment name
+        service:
+          type: string
+          description: Kubernetes service name
+        ingress:
+          type: string
+          description: Kubernetes ingress name
+        sandbox_type:
+          type: string
+          description: Type of sandbox deployed
+        driver_version:
+          type: string
+          description: Driver version used for deployment
+
+    SandboxStatsResponse:
+      type: object
+      properties:
+        total_sandboxes:
+          type: integer
+          description: Total number of sandboxes
+        running_sandboxes:
+          type: integer
+          description: Number of running sandboxes
+        terminated_sandboxes:
+          type: integer
+          description: Number of terminated sandboxes
+        failed_sandboxes:
+          type: integer
+          description: Number of failed sandboxes
+        total_cost:
+          type: number
+          format: float
+          description: Total cost accumulated
+        avg_cpu_usage:
+          type: number
+          format: float
+          description: Average CPU usage percentage
+        avg_memory_usage:
+          type: number
+          format: float
+          description: Average memory usage percentage
+        total_uptime_hours:
+          type: number
+          format: float
+          description: Total uptime in hours
+
+    BatchDeleteRequest:
+      type: object
+      required:
+        - sandbox_ids
+      properties:
+        sandbox_ids:
+          type: array
+          items:
+            type: string
+          description: List of sandbox IDs to delete
+        force:
+          type: boolean
+          default: false
+          description: Force deletion even if sandboxes are running
+
+    BatchDeleteResponse:
+      type: object
+      properties:
+        successful_count:
+          type: integer
+          description: Number of successfully deleted sandboxes
+        failed_count:
+          type: integer
+          description: Number of failed deletions
+        successful:
+          type: array
+          items:
+            type: string
+          description: List of successfully deleted sandbox IDs
+        failed:
+          type: array
+          items:
+            type: object
+            properties:
+              sandbox_id:
+                type: string
+              error:
+                type: string
+          description: List of failed deletions with errors
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+
+    Error:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          description: Error message
+        code:
+          type: string
+          description: Error code
+        details:
+          type: object
+          description: Additional error details
+
+security:
+  - ApiKeyAuth: []

@@ -1,0 +1,14 @@
+# buf.gen.yaml - 生成到 src/generated 目录
+# For details, see https://buf.build/docs/configuration/v2/buf-gen-yaml
+version: v2
+managed:
+  enabled: true
+plugins:
+  # Generate TypeScript/JavaScript code for Protobuf messages and services
+  - remote: buf.build/bufbuild/es
+    out: ../../src/generated
+    opt:
+      - target=ts
+      - import_extension=js
+      - js_import_style=module
+      - ts_nocheck=true
