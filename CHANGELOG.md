@@ -1,3 +1,26 @@
+# 1.0.0 (2025-10-09)
+
+
+### Bug Fixes
+
+* correct pnpm installation order in CI workflow ([15ec2aa](https://github.com/scalebox-dev/scalebox-sdk-js/commit/15ec2aaf60118f6882bbcc1b3f701360bcac86fb))
+* remove pnpm cache and add lockfile verification ([42377a3](https://github.com/scalebox-dev/scalebox-sdk-js/commit/42377a30121d668cfbd35b9f037b9069cc2ed5fc))
+* resolve gRPC import and build issues ([f87ccf9](https://github.com/scalebox-dev/scalebox-sdk-js/commit/f87ccf9c6bf89bad1166129771833e3328359e18))
+* resolve semantic-release configuration issues ([48c0923](https://github.com/scalebox-dev/scalebox-sdk-js/commit/48c0923ef4a9afd2c6dff72614c3d8c88c7b187a))
+* update CI cache configuration to use pnpm ([3eb115e](https://github.com/scalebox-dev/scalebox-sdk-js/commit/3eb115ed8ca490a2f853a21fbe2441a6ca66bba2))
+* update pnpm version to match lockfile version ([4a8e588](https://github.com/scalebox-dev/scalebox-sdk-js/commit/4a8e588772c4f457130778bc8463c80eb4f67125))
+* update test script and fix timeout test ([baa03e7](https://github.com/scalebox-dev/scalebox-sdk-js/commit/baa03e720ad53b2008ac1f9381b9aaf5271b0730))
+
+
+### Features
+
+* enhance CI with version checking and auto-release ([7aef9d0](https://github.com/scalebox-dev/scalebox-sdk-js/commit/7aef9d04e25f3563062ff55672f4769da4261e97))
+* implement automated semantic release workflow ([5cbfa2d](https://github.com/scalebox-dev/scalebox-sdk-js/commit/5cbfa2d087b9076412a9332bd5366c93d350a3d4))
+* include generated gRPC files in repository ([fa95d44](https://github.com/scalebox-dev/scalebox-sdk-js/commit/fa95d44b557b67b391fb3b76e2ade6ec946ef192))
+* initial release preparation ([8cc6483](https://github.com/scalebox-dev/scalebox-sdk-js/commit/8cc6483ac3e2914ae5c65a466e5ccdb446c40bfe))
+* optimize testing infrastructure for CI/CD ([ed7b2bd](https://github.com/scalebox-dev/scalebox-sdk-js/commit/ed7b2bd381f1ff5fc2ed09077806bb939bb36b71))
+* prepare for initial npm publication ([98ec332](https://github.com/scalebox-dev/scalebox-sdk-js/commit/98ec3320b7622d91d28b96925d505ccf9f17b78b))
+
 # Changelog
 
 All notable changes to this project will be documented in this file.

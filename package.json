@@ -1,6 +1,6 @@
 {
   "name": "@scalebox/sdk",
-  "version": "0.0.2",
+  "version": "1.0.1",
   "description": "一个用于在可控沙箱中执行多语言代码的 JavaScript SDK，支持同步与异步模式，以及多语言 Kernel（Python、R、Node.js、Deno/TypeScript、Java/IJAVA、Bash）",
   "homepage": "https://scalebox.dev",
   "license": "MIT",
