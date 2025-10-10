@@ -1,4 +1,5 @@
 import { ApiClient } from '../api'
+import { GrpcClient } from '../grpc/client'
 import { ConnectionConfig, ConnectionOpts, DEFAULT_SANDBOX_TIMEOUT_MS } from '../connectionConfig'
 import { 
   SandboxOpts, 
@@ -76,6 +77,7 @@ export class Sandbox {
 
   protected readonly connectionConfig: ConnectionConfig
   protected readonly api: ApiClient
+  protected readonly grpcClient: GrpcClient
   private readonly envs: Record<string, string> = {}
 
   /**
@@ -109,12 +111,19 @@ export class Sandbox {
     this.envdAccessToken = opts.envdAccessToken
     this.envs = opts.envs || {}
 
+    // Initialize gRPC client for sandbox communication
+    // The grpcClient uses sandboxDomain and envdAccessToken for authentication
+    this.grpcClient = new GrpcClient(
+      this.connectionConfig,
+      this.sandboxDomain,
+      this.envdAccessToken
+    )
+
     // Initialize filesystem, commands, pty, and process modules
-    // Pass sandboxDomain directly to gRPC-based modules (Filesystem and ProcessManager)
-    // sandboxDomain is the actual domain returned from sandbox creation API
+    // Commands and Pty now use gRPC client for process management
     this.files = new Filesystem(this.sandboxId, this.connectionConfig, this.sandboxDomain, this.envdAccessToken)
-    this.commands = new Commands(this.api, this.connectionConfig, this.sandboxId)
-    this.pty = new Pty(this.api, this.connectionConfig, this.sandboxId)
+    this.commands = new Commands(this.grpcClient, this.connectionConfig)
+    this.pty = new Pty(this.grpcClient, this.connectionConfig)
     this.processes = new ProcessManager(this.sandboxId, this.connectionConfig, this.sandboxDomain, this.envdAccessToken)
   }
 

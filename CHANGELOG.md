@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.0.2] - 2025-01-10
 
 ### Added
 - Initial release of Scalebox JavaScript SDK
@@ -18,10 +18,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Professional documentation with badges
 
 ### Changed
-- N/A
+- **BREAKING**: Commands and PTY modules now use gRPC instead of HTTP API
+- Commands and PTY operations now properly handle event streams
+- Improved error handling and debugging for process management
 
 ### Fixed
-- N/A
+- Fixed Commands module to use correct gRPC protocol for process management
+- Fixed PTY module to use correct gRPC protocol for terminal operations
+- Fixed event stream handling with proper nested event structure
+- Fixed process lifecycle management (start, data, end events)
+- Fixed stdout/stderr real-time callbacks
+- Fixed PTY data streaming and input handling
 
 ### Security
 - Security audit passed
@@ -29,6 +36,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Secure dependency management
 
 ---
+
+## [Unreleased]
 
 ## [0.0.1] - 2025-10-09
 

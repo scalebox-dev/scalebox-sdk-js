@@ -1,5 +1,18 @@
-import { ApiClient } from '../api'
+import { GrpcClient } from '../grpc/client'
 import { ConnectionConfig } from '../connectionConfig'
+import { create } from '@bufbuild/protobuf'
+import { 
+  StartRequestSchema, 
+  ProcessConfigSchema,
+  ProcessSelectorSchema,
+  SendSignalRequestSchema,
+  SendInputRequestSchema,
+  ProcessInputSchema,
+  ListRequestSchema,
+  ConnectRequestSchema,
+  Signal,
+  ProcessInfo
+} from '../generated/api_pb'
 
 /**
  * Options for request to the Commands API.
@@ -95,6 +108,7 @@ export interface CommandResult {
  * @property {number} pid process ID of the command.
  */
 export class CommandHandle {
+  private _pid?: number
   private _stdout = ''
   private _stderr = ''
   private result?: CommandResult
@@ -102,13 +116,23 @@ export class CommandHandle {
   private readonly _wait: Promise<void>
 
   constructor(
-    readonly pid: number,
     private readonly handleDisconnect: () => void,
-    private readonly handleKill: () => Promise<boolean>,
+    private readonly handleKill: (pid: number) => Promise<boolean>,
+    private readonly events: AsyncIterable<any>,
     private readonly onStdout?: (stdout: string) => void | Promise<void>,
     private readonly onStderr?: (stderr: string) => void | Promise<void>
   ) {
     this._wait = this.handleEvents()
+  }
+
+  /**
+   * Process ID of the command.
+   */
+  get pid(): number {
+    if (this._pid === undefined) {
+      throw new Error('PID not available yet - wait for command to start')
+    }
+    return this._pid
   }
 
   /**
@@ -149,10 +173,19 @@ export class CommandHandle {
    */
   async wait(): Promise<CommandResult> {
     await this._wait
+    
+    // If there was an iteration error, throw it
+    if (this.iterationError) {
+      throw this.iterationError
+    }
+    
+    // If we have a result, return it
     if (this.result) {
       return this.result
     }
-    throw new Error('Command execution failed')
+    
+    // Otherwise, something went wrong
+    throw new Error(`Command execution failed: no result received (PID: ${this._pid})`)
   }
 
   /**
@@ -161,13 +194,66 @@ export class CommandHandle {
    * @returns `true` if the command was killed, `false` otherwise.
    */
   async kill(): Promise<boolean> {
-    return await this.handleKill()
+    if (this._pid === undefined) {
+      throw new Error('Cannot kill command - PID not available yet')
+    }
+    return await this.handleKill(this._pid)
   }
 
   private async handleEvents(): Promise<void> {
-    // TODO: Implement event handling for command execution
-    // This would typically involve listening to stdout/stderr streams
-    // and updating the internal state accordingly
+    try {
+      for await (const response of this.events) {
+        // The event structure is: response.event.event (nested event field)
+        const event = response.event?.event
+        if (!event) {
+          continue
+        }
+
+        const { case: eventCase, value } = event
+
+        // Handle different event types
+        if (eventCase === 'start') {
+          // Extract and store PID from start event
+          this._pid = value.pid
+        } else if (eventCase === 'data') {
+          // Handle data events (stdout/stderr)
+          if (value.output) {
+            const { case: outputCase, value: outputValue } = value.output
+            
+            if (outputCase === 'stdout') {
+              const stdout = new TextDecoder().decode(outputValue)
+              this._stdout += stdout
+              if (this.onStdout) {
+                const result = this.onStdout(stdout)
+                if (result instanceof Promise) {
+                  await result
+                }
+              }
+            } else if (outputCase === 'stderr') {
+              const stderr = new TextDecoder().decode(outputValue)
+              this._stderr += stderr
+              if (this.onStderr) {
+                const result = this.onStderr(stderr)
+                if (result instanceof Promise) {
+                  await result
+                }
+              }
+            }
+          }
+        } else if (eventCase === 'end') {
+          // Handle end event
+          this.result = {
+            exitCode: value.exitCode,
+            stdout: this._stdout,
+            stderr: this._stderr,
+            error: value.error ? new Error(value.error) : undefined
+          }
+        }
+        // Ignore 'keepalive' events
+      }
+    } catch (error) {
+      this.iterationError = error instanceof Error ? error : new Error(String(error))
+    }
   }
 }
 
@@ -175,18 +261,15 @@ export class CommandHandle {
  * Module for starting and interacting with commands in the sandbox.
  */
 export class Commands {
-  private readonly api: ApiClient
+  private readonly grpcClient: GrpcClient
   private readonly connectionConfig: ConnectionConfig
-  private readonly sandboxId: string
 
   constructor(
-    api: ApiClient,
-    connectionConfig: ConnectionConfig,
-    sandboxId: string
+    grpcClient: GrpcClient,
+    connectionConfig: ConnectionConfig
   ) {
-    this.api = api
+    this.grpcClient = grpcClient
     this.connectionConfig = connectionConfig
-    this.sandboxId = sandboxId
   }
 
   /**
@@ -244,19 +327,26 @@ export class Commands {
     opts?: CommandStartOpts
   ): Promise<CommandHandle> {
     try {
-      const response = await this.api.executeCode({
-        code: cmd,
-        language: 'bash',
-        envVars: opts?.envs,
-        contextId: undefined
+      // Create process config with bash to execute the command
+      const processConfig = create(ProcessConfigSchema, {
+        cmd: '/bin/bash',
+        args: ['-l', '-c', cmd],
+        envs: opts?.envs || {},
+        cwd: opts?.cwd
       })
 
-      const pid = (response as any).pid || Math.floor(Math.random() * 10000) + 1000
+      // Create start request
+      const startRequest = create(StartRequestSchema, {
+        process: processConfig
+      })
+
+      // Start the process and get event stream
+      const events = this.grpcClient.process.start(startRequest)
 
       return new CommandHandle(
-        pid,
-        () => {}, // handleDisconnect
-        async () => true, // handleKill
+        () => {}, // handleDisconnect - not implemented yet
+        (pid: number) => this.kill(pid), // handleKill
+        events,
         opts?.onStdout,
         opts?.onStderr
       )
@@ -277,7 +367,126 @@ export class Commands {
     pid: number,
     opts?: CommandConnectOpts
   ): Promise<CommandHandle> {
-    // TODO: Implement connection to existing command
-    throw new Error('Connecting to existing commands not implemented yet')
+    try {
+      // Create process selector
+      const selector = create(ProcessSelectorSchema, {
+        selector: {
+          case: 'pid',
+          value: pid
+        }
+      })
+
+      // Create connect request
+      const connectRequest = create(ConnectRequestSchema, {
+        process: selector
+      })
+
+      // Connect to the process and get event stream
+      const events = this.grpcClient.process.connect(connectRequest)
+
+      return new CommandHandle(
+        () => {}, // handleDisconnect
+        (connectedPid: number) => this.kill(connectedPid), // handleKill
+        events,
+        opts?.onStdout,
+        opts?.onStderr
+      )
+    } catch (error) {
+      throw new Error(`Failed to connect to command: ${error}`)
+    }
+  }
+
+  /**
+   * Kill a running command by its process ID.
+   *
+   * @param pid process ID of the command.
+   *
+   * @returns `true` if the command was killed, `false` otherwise.
+   */
+  async kill(pid: number): Promise<boolean> {
+    try {
+      const selector = create(ProcessSelectorSchema, {
+        selector: {
+          case: 'pid',
+          value: pid
+        }
+      })
+
+      const request = create(SendSignalRequestSchema, {
+        process: selector,
+        signal: Signal.SIGKILL
+      })
+
+      await this.grpcClient.process.sendSignal(request)
+      return true
+    } catch (error) {
+      if (String(error).includes('not found')) {
+        return false
+      }
+      throw new Error(`Failed to kill command: ${error}`)
+    }
+  }
+
+  /**
+   * List all running commands and PTY sessions.
+   *
+   * @returns list of running processes.
+   */
+  async list(): Promise<Array<{
+    pid: number
+    cmd: string
+    args: string[]
+    envs: Record<string, string>
+    cwd?: string
+    tag?: string
+  }>> {
+    try {
+      const request = create(ListRequestSchema, {})
+      const response = await this.grpcClient.process.list(request)
+
+      return response.processes.map((p: ProcessInfo) => ({
+        pid: p.pid,
+        cmd: p.config?.cmd || '',
+        args: p.config?.args || [],
+        envs: p.config?.envs || {},
+        cwd: p.config?.cwd,
+        tag: p.tag
+      }))
+    } catch (error) {
+      throw new Error(`Failed to list commands: ${error}`)
+    }
+  }
+
+  /**
+   * Send input to a running command's stdin.
+   *
+   * @param pid process ID of the command.
+   * @param data data to send to stdin.
+   */
+  async sendStdin(pid: number, data: string): Promise<void> {
+    try {
+      const selector = create(ProcessSelectorSchema, {
+        selector: {
+          case: 'pid',
+          value: pid
+        }
+      })
+
+      const input = create(ProcessInputSchema, {
+        input: {
+          case: 'stdin',
+          value: new TextEncoder().encode(data)
+        }
+      })
+
+      const request = create(SendInputRequestSchema, {
+        process: selector,
+        input
+      })
+
+      await this.grpcClient.process.sendInput(request)
+    } catch (error) {
+      throw new Error(`Failed to send stdin: ${error}`)
+    }
   }
 }
