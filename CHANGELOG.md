@@ -1,3 +1,16 @@
+# [2.0.0](https://github.com/scalebox-dev/scalebox-sdk-js/compare/v1.0.0...v2.0.0) (2025-10-10)
+
+
+### Bug Fixes
+
+* Commands and PTY modules now use gRPC instead of HTTP API ([72c83ed](https://github.com/scalebox-dev/scalebox-sdk-js/commit/72c83ed87d87ce2260faeabbb03f1ea86f181ebb))
+* resolve merge conflict and update version to 1.0.1 ([0b82c82](https://github.com/scalebox-dev/scalebox-sdk-js/commit/0b82c82fc6a9d4db38b385bd95431703ac39c69f))
+
+
+### BREAKING CHANGES
+
+* Commands and PTY modules now use gRPC instead of HTTP API
+
 # 1.0.0 (2025-10-09)
 
 
