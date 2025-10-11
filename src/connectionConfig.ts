@@ -5,6 +5,9 @@
 
 export const DEFAULT_SANDBOX_TIMEOUT_MS = 300_000 // 5 minutes
 export const DEFAULT_REQUEST_TIMEOUT_MS = 30_000 // 30 seconds
+export const DEFAULT_COMMAND_TIMEOUT_MS = 60_000 // 60 seconds
+export const KEEPALIVE_PING_INTERVAL_SEC = 50 // 50 seconds
+export const KEEPALIVE_PING_HEADER = 'Keepalive-Ping-Interval'
 
 export interface ConnectionOpts {
   /**

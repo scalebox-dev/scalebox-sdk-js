@@ -1,5 +1,5 @@
 import { GrpcClient } from '../grpc/client'
-import { ConnectionConfig } from '../connectionConfig'
+import { ConnectionConfig, DEFAULT_COMMAND_TIMEOUT_MS, KEEPALIVE_PING_HEADER, KEEPALIVE_PING_INTERVAL_SEC } from '../connectionConfig'
 import { create } from '@bufbuild/protobuf'
 import { 
   StartRequestSchema, 
@@ -252,8 +252,22 @@ export class Pty {
         pty
       })
 
-      // Start the process and get event stream
-      const events = this.grpcClient.process.start(startRequest)
+      // Prepare call options with timeout and keepalive
+      const callOptions: any = {}
+      
+      // Set timeout (default 60 seconds)
+      const timeoutMs = opts?.timeoutMs ?? DEFAULT_COMMAND_TIMEOUT_MS
+      if (timeoutMs > 0) {
+        callOptions.timeoutMs = timeoutMs
+      }
+
+      // Set keepalive header to prevent proxy timeout
+      callOptions.headers = {
+        [KEEPALIVE_PING_HEADER]: KEEPALIVE_PING_INTERVAL_SEC.toString(),
+      }
+
+      // Start the process and get event stream with timeout configuration
+      const events = this.grpcClient.process.start(startRequest, callOptions)
 
       return new PtyHandle(
         () => {}, // handleDisconnect - not implemented yet
@@ -293,8 +307,22 @@ export class Pty {
         process: selector
       })
 
-      // Connect to the process and get event stream
-      const events = this.grpcClient.process.connect(connectRequest)
+      // Prepare call options with timeout and keepalive
+      const callOptions: any = {}
+      
+      // Set timeout (default 60 seconds)
+      const timeoutMs = opts?.timeoutMs ?? DEFAULT_COMMAND_TIMEOUT_MS
+      if (timeoutMs > 0) {
+        callOptions.timeoutMs = timeoutMs
+      }
+
+      // Set keepalive header to prevent proxy timeout
+      callOptions.headers = {
+        [KEEPALIVE_PING_HEADER]: KEEPALIVE_PING_INTERVAL_SEC.toString(),
+      }
+
+      // Connect to the process and get event stream with timeout configuration
+      const events = this.grpcClient.process.connect(connectRequest, callOptions)
 
       return new PtyHandle(
         () => {}, // handleDisconnect
