@@ -1,3 +1,10 @@
+## [2.0.1](https://github.com/scalebox-dev/scalebox-sdk-js/compare/v2.0.0...v2.0.1) (2025-10-13)
+
+
+### Bug Fixes
+
+* implement timeout and keepalive for commands and pty ([6f98150](https://github.com/scalebox-dev/scalebox-sdk-js/commit/6f98150687b66db83c215dab158181612d269023))
+
 # [2.0.0](https://github.com/scalebox-dev/scalebox-sdk-js/compare/v1.0.0...v2.0.0) (2025-10-10)
 
 
