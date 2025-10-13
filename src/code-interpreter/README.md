@@ -1,108 +1,108 @@
 # Code Interpreter Module
 
-## 概述
+## Overview
 
-Code Interpreter 模块提供了一个完整的代码执行引擎，支持多种编程语言的实时执行和状态管理。该模块基于 Connect RPC 协议实现，提供了类型安全、流式处理和丰富的输出格式支持。
+The Code Interpreter module provides a complete code execution engine that supports real-time execution and state management for multiple programming languages. This module is implemented based on the Connect RPC protocol and provides type-safe, streaming, and rich output format support.
 
-## 架构设计
+## Architecture Design
 
-### 模块结构
+### Module Structure
 
 ```
 src/code-interpreter/
-├── index.ts          # 主入口 - CodeInterpreter 类实现
-├── client.ts         # Connect RPC 客户端 - 执行和上下文服务
-├── parser.ts         # 输出解析器 - 处理流式响应
-├── types.ts          # 类型定义 - 完整的 TypeScript 类型系统
-└── README.md         # 本文档
+├── index.ts          # Main entry - CodeInterpreter class implementation
+├── client.ts         # Connect RPC client - execution and context services
+├── parser.ts         # Output parser - processes streaming responses
+├── types.ts          # Type definitions - complete TypeScript type system
+└── README.md         # This document
 ```
 
-### 核心组件
+### Core Components
 
 #### 1. CodeInterpreter (index.ts)
-主要的用户接口类，提供以下功能：
-- 代码执行（同步和流式）
-- 上下文管理（创建、销毁、查询）
-- 异步执行处理
-- 资源清理
+Main user interface class providing the following functionality:
+- Code execution (synchronous and streaming)
+- Context management (create, destroy, query)
+- Asynchronous execution handling
+- Resource cleanup
 
 #### 2. RPC Clients (client.ts)
-Connect RPC 客户端实现：
-- **ExecutionServiceClient**: 流式代码执行服务
-- **ContextServiceClient**: 状态上下文管理服务
-- 基于 Protocol Buffers 的类型安全通信
-- 支持 HTTP/1.1 和 HTTP/2
+Connect RPC client implementation:
+- **ExecutionServiceClient**: Streaming code execution service
+- **ContextServiceClient**: State context management service
+- Type-safe communication based on Protocol Buffers
+- Supports HTTP/1.1 and HTTP/2
 
 #### 3. Output Parser (parser.ts)
-处理执行响应流：
-- **Logs**: 聚合 stdout/stderr 输出
-- **Execution**: 累积执行数据和结果
-- **parseOutput**: 主解析函数，处理多种事件类型
-- **executionToResult**: 转换为最终结果格式
+Handles execution response streams:
+- **Logs**: Aggregates stdout/stderr output
+- **Execution**: Accumulates execution data and results
+- **parseOutput**: Main parsing function, handles multiple event types
+- **executionToResult**: Converts to final result format
 
 #### 4. Type Definitions (types.ts)
-完整的 TypeScript 类型系统：
-- 执行选项和结果类型
-- 上下文和语言定义
-- 图表类型（线图、散点图、柱状图等）
-- 流式响应接口
+Complete TypeScript type system:
+- Execution options and result types
+- Context and language definitions
+- Chart types (line chart, scatter plot, bar chart, etc.)
+- Streaming response interfaces
 
-## 技术特性
+## Technical Features
 
-### 1. Connect RPC 通信
-- 使用 @connectrpc/connect 进行 RPC 通信
-- 自动 protobuf 序列化/反序列化
-- 流式响应支持
-- 类型安全的请求/响应
+### 1. Connect RPC Communication
+- Uses @connectrpc/connect for RPC communication
+- Automatic protobuf serialization/deserialization
+- Streaming response support
+- Type-safe requests/responses
 
-### 2. 流式执行
+### 2. Streaming Execution
 ```typescript
-// 实时流式代码执行
+// Real-time streaming code execution
 for await (const response of interpreter.executeStream({
   language: 'python',
   code: 'print("Hello, World!")',
   onStdout: (msg) => console.log(msg.content)
 })) {
-  // 处理每个流式响应
+  // Process each streaming response
 }
 ```
 
-### 3. 状态上下文
-类似 Jupyter Kernel 的执行上下文：
-- 跨多次执行保持变量和状态
-- 隔离的执行环境
-- 可配置工作目录和环境变量
+### 3. State Context
+Execution context similar to Jupyter Kernel:
+- Maintain variables and state across multiple executions
+- Isolated execution environment
+- Configurable working directory and environment variables
 
-### 4. 丰富的输出格式
-支持多种输出类型：
-- 文本输出 (stdout/stderr)
-- 富媒体 (HTML, SVG, PNG, PDF)
-- 图表 (线图、散点图、柱状图、饼图等)
-- JSON 数据
-- Markdown 和 LaTeX
+### 4. Rich Output Formats
+Supports multiple output types:
+- Text output (stdout/stderr)
+- Rich media (HTML, SVG, PNG, PDF)
+- Charts (line, scatter, bar, pie, etc.)
+- JSON data
+- Markdown and LaTeX
 
-### 5. 回调处理器
-实时事件回调：
-- `onStdout`: 标准输出处理
-- `onStderr`: 错误输出处理
-- `onResult`: 结果处理
-- `onError`: 错误处理
-- `onExit`: 退出码处理
+### 5. Callback Handlers
+Real-time event callbacks:
+- `onStdout`: Standard output handler
+- `onStderr`: Error output handler
+- `onResult`: Result handler
+- `onError`: Error handler
+- `onExit`: Exit code handler
 
-## 使用示例
+## Usage Examples
 
-### 基本使用
+### Basic Usage
 
 ```typescript
 import { CodeInterpreter } from './code-interpreter'
 
-// 创建代码解释器
+// Create code interpreter
 const interpreter = await CodeInterpreter.create({
   templateId: 'code-interpreter',
   timeout: 60000
 })
 
-// 执行代码
+// Execute code
 const result = await interpreter.execute({
   language: 'python',
   code: 'print("Hello, World!")'
@@ -111,31 +111,31 @@ const result = await interpreter.execute({
 console.log(result.stdout) // "Hello, World!\n"
 ```
 
-### 流式执行
+### Streaming Execution
 
 ```typescript
-// 使用流式执行获取实时反馈
+// Use streaming execution for real-time feedback
 for await (const response of interpreter.executeStream({
   language: 'python',
   code: 'import time\nfor i in range(5):\n    print(i)\n    time.sleep(1)',
   onStdout: (msg) => {
-    console.log('实时输出:', msg.content)
+    console.log('Real-time output:', msg.content)
   }
 })) {
-  // 处理流式响应
+  // Process streaming response
 }
 ```
 
-### 上下文管理
+### Context Management
 
 ```typescript
-// 创建持久化上下文
+// Create persistent context
 const context = await interpreter.createCodeContext({
   language: 'python',
   cwd: '/workspace'
 })
 
-// 在上下文中执行多次代码
+// Execute code multiple times in context
 await interpreter.runCode('x = 42', {
   language: 'python',
   context
@@ -144,140 +144,140 @@ await interpreter.runCode('x = 42', {
 await interpreter.runCode('print(x * 2)', {
   language: 'python',
   context
-}) // 输出: 84
+}) // Output: 84
 
-// 清理上下文
+// Cleanup context
 await interpreter.destroyContext(context)
 ```
 
-### 回调处理
+### Callback Handling
 
 ```typescript
 const result = await interpreter.runCode(
   'import matplotlib.pyplot as plt\nplt.plot([1,2,3])',
   {
     language: 'python',
-    onStdout: (msg) => console.log('输出:', msg.content),
-    onStderr: (msg) => console.error('错误:', msg.content),
+    onStdout: (msg) => console.log('Output:', msg.content),
+    onStderr: (msg) => console.error('Error:', msg.content),
     onResult: (result) => {
       if (result.png) {
-        console.log('生成了图表')
+        console.log('Chart generated')
       }
     },
-    onError: (error) => console.error('执行失败:', error.message)
+    onError: (error) => console.error('Execution failed:', error.message)
   }
 )
 ```
 
-### 资源清理
+### Resource Cleanup
 
 ```typescript
-// 关闭解释器并清理所有资源
+// Close interpreter and cleanup all resources
 await interpreter.close()
 ```
 
-## API 文档
+## API Documentation
 
-### CodeInterpreter 类
+### CodeInterpreter Class
 
-#### 静态方法
-- `create(opts?)`: 创建新的代码解释器实例
+#### Static Methods
+- `create(opts?)`: Create new code interpreter instance
 
-#### 实例方法
-- `execute(opts)`: 执行代码（基本接口）
-- `executeStream(opts)`: 流式执行代码
-- `runCode(code, opts)`: 执行代码（完整接口）
-- `runCodeAsync(code, opts)`: 异步后台执行
-- `createContext(opts)`: 创建执行上下文
-- `createCodeContext(opts)`: 创建代码上下文（推荐）
-- `destroyContext(context)`: 销毁上下文
-- `getContexts()`: 获取所有上下文
-- `getContext(id)`: 获取特定上下文
-- `getSandbox()`: 获取底层 Sandbox 实例
-- `close()`: 关闭解释器并清理资源
+#### Instance Methods
+- `execute(opts)`: Execute code (basic interface)
+- `executeStream(opts)`: Stream code execution
+- `runCode(code, opts)`: Execute code (complete interface)
+- `runCodeAsync(code, opts)`: Asynchronous background execution
+- `createContext(opts)`: Create execution context
+- `createCodeContext(opts)`: Create code context (recommended)
+- `destroyContext(context)`: Destroy context
+- `getContexts()`: Get all contexts
+- `getContext(id)`: Get specific context
+- `getSandbox()`: Get underlying Sandbox instance
+- `close()`: Close interpreter and cleanup resources
 
-#### 属性
-- `jupyterUrl`: Jupyter 服务 URL
+#### Properties
+- `jupyterUrl`: Jupyter service URL
 
-### 类型定义
+### Type Definitions
 
-详见 `types.ts` 文件，主要类型包括：
+See `types.ts` file for main types including:
 
-- `Language`: 支持的编程语言
-- `CodeContext`: 执行上下文
-- `CodeInterpreterOpts`: 解释器选项
-- `CodeExecutionOpts`: 代码执行选项
-- `ExecutionResult`: 执行结果
-- `ExecutionResponse`: 流式响应
-- `Result`: 富媒体结果
-- `ChartTypes`: 图表类型
+- `Language`: Supported programming languages
+- `CodeContext`: Execution context
+- `CodeInterpreterOpts`: Interpreter options
+- `CodeExecutionOpts`: Code execution options
+- `ExecutionResult`: Execution result
+- `ExecutionResponse`: Streaming response
+- `Result`: Rich media result
+- `ChartTypes`: Chart types
 
-## 代码规范
+## Code Standards
 
-### 文件组织
-1. 所有 import 按字母顺序排列
-2. 类型导入使用 `import type` 语法
-3. 同一包的导入合并在一起
-4. 值导入和类型导入分开
+### File Organization
+1. All imports sorted alphabetically
+2. Type imports use `import type` syntax
+3. Imports from same package are merged
+4. Value imports and type imports are separated
 
-### 文档注释
-- 所有公共 API 都有完整的 JSDoc 注释
-- 包含参数说明、返回值说明和使用示例
-- 复杂逻辑有内联注释说明
+### Documentation Comments
+- All public APIs have complete JSDoc comments
+- Include parameter descriptions, return value descriptions, and usage examples
+- Complex logic has inline comment explanations
 
-### 错误处理
-- 使用 `handleConnectError` 统一处理错误
-- 所有异步操作都有错误捕获
-- 提供有意义的错误消息
+### Error Handling
+- Use `handleConnectError` for unified error handling
+- All asynchronous operations have error catching
+- Provide meaningful error messages
 
-## 最新改进（2025-01）
+## Latest Improvements (2025-01)
 
-### 1. 文件重命名
-- `generatedClient.ts` → `client.ts` (更简洁清晰)
+### 1. File Renaming
+- `generatedClient.ts` → `client.ts` (more concise and clear)
 
-### 2. Import 优化
-- 合并同一包的 import 语句
-- 按字母顺序排列所有 import
-- 正确区分类型导入和值导入
-- 移除未使用的 import
+### 2. Import Optimization
+- Merge import statements from same package
+- Sort all imports alphabetically
+- Correctly distinguish type imports and value imports
+- Remove unused imports
 
-### 3. 文档完善
-- 为所有类、方法、函数添加详细的 JSDoc 注释
-- 增加使用示例和参数说明
-- 添加架构说明和设计理念
+### 3. Documentation Enhancement
+- Add detailed JSDoc comments for all classes, methods, and functions
+- Add usage examples and parameter descriptions
+- Add architecture descriptions and design philosophy
 
-### 4. 代码质量
-- 所有文件通过 TypeScript 编译检查
-- 没有 linter 错误
-- 遵循一致的代码风格
+### 4. Code Quality
+- All files pass TypeScript compilation checks
+- No linter errors
+- Follow consistent code style
 
-## 与 Python SDK 的对比
+## Comparison with Python SDK
 
-| 特性 | Python SDK | JavaScript SDK | 状态 |
-|------|-----------|---------------|------|
-| 流式执行 | ✅ async for | ✅ AsyncGenerator | ✅ |
-| gRPC 通信 | ✅ Connect | ✅ Connect | ✅ |
-| 输出解析 | ✅ parse_output | ✅ parseOutput | ✅ |
-| 上下文管理 | ✅ create/destroy | ✅ create/destroy | ✅ |
-| 图表支持 | ✅ Chart types | ✅ Chart types | ✅ |
-| 回调处理 | ✅ Callbacks | ✅ OutputHandlers | ✅ |
-| 类型安全 | ⚠️ 运行时 | ✅ 编译时 | ✅ |
+| Feature | Python SDK | JavaScript SDK | Status |
+|---------|-----------|---------------|------|
+| Streaming execution | ✅ async for | ✅ AsyncGenerator | ✅ |
+| gRPC communication | ✅ Connect | ✅ Connect | ✅ |
+| Output parsing | ✅ parse_output | ✅ parseOutput | ✅ |
+| Context management | ✅ create/destroy | ✅ create/destroy | ✅ |
+| Chart support | ✅ Chart types | ✅ Chart types | ✅ |
+| Callback handling | ✅ Callbacks | ✅ OutputHandlers | ✅ |
+| Type safety | ⚠️ Runtime | ✅ Compile-time | ✅ |
 
-## 依赖项
+## Dependencies
 
-- `@connectrpc/connect`: Connect RPC 客户端
-- `@connectrpc/connect-web`: Web 传输层
-- `@bufbuild/protobuf`: Protocol Buffers 运行时
-- 内部依赖: `../sandbox`, `../api`, `../connectionConfig`
+- `@connectrpc/connect`: Connect RPC client
+- `@connectrpc/connect-web`: Web transport layer
+- `@bufbuild/protobuf`: Protocol Buffers runtime
+- Internal dependencies: `../sandbox`, `../api`, `../connectionConfig`
 
-## 贡献指南
+## Contributing Guidelines
 
-1. 保持代码风格一致
-2. 添加完整的类型注解
-3. 为新功能编写文档和示例
-4. 确保所有测试通过
-5. 更新 README 说明
+1. Maintain consistent code style
+2. Add complete type annotations
+3. Write documentation and examples for new features
+4. Ensure all tests pass
+5. Update README descriptions
 
 ## License
 
-与项目主 License 保持一致
+Consistent with the project's main license

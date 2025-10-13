@@ -1,27 +1,27 @@
-# 测试运行指南
+# Testing Guide
 
-本文档说明如何运行 Scalebox SDK 的测试，特别是如何按目录层级顺序运行测试以避免后端并发限制。
+This document explains how to run Scalebox SDK tests, especially how to run tests in directory hierarchy order to avoid backend concurrency limitations.
 
-## 测试目录结构
+## Test Directory Structure
 
 ```
 tests/
-├── api/                    # API 基础测试（不依赖沙箱）
-├── code_interpreter/       # 代码解释器测试（轻量级）
-├── desktop/               # 桌面应用测试（中等复杂度）
-├── sandbox/               # 沙箱测试（最复杂，需要沙箱资源）
-└── integration/           # 集成测试（端到端）
+├── api/                    # API basic tests (no sandbox dependency)
+├── code_interpreter/       # Code interpreter tests (lightweight)
+├── desktop/               # Desktop application tests (medium complexity)
+├── sandbox/               # Sandbox tests (most complex, requires sandbox resources)
+└── integration/           # Integration tests (end-to-end)
 ```
 
-## 运行方式
+## Running Tests
 
-### 1. 运行所有测试（并发，可能遇到后端限制）
+### 1. Run All Tests (Concurrent, may encounter backend limitations)
 
 ```bash
-# 运行所有测试
+# Run all tests
 pnpm test
 
-# 运行特定目录的测试
+# Run specific directory tests
 pnpm test:api
 pnpm test:code-interpreter
 pnpm test:desktop
@@ -29,136 +29,136 @@ pnpm test:sandbox
 pnpm test:integration
 ```
 
-### 2. 按目录层级顺序运行测试（推荐）
+### 2. Run Tests in Directory Hierarchy Order (Recommended)
 
-为了避免后端并发限制，建议按以下顺序运行测试：
+To avoid backend concurrency limitations, it is recommended to run tests in the following order:
 
-#### 使用 npm-run-all（简单方式）
+#### Using npm-run-all (Simple Way)
 
 ```bash
-# 运行所有测试目录（包括集成测试）
+# Run all test directories (including integration tests)
 pnpm test:sequential
 
-# 跳过集成测试
+# Skip integration tests
 pnpm test:sequential:no-integration
 ```
 
-#### 使用 Bash 脚本（推荐）
+#### Using Bash Script (Recommended)
 
 ```bash
-# 运行所有测试目录（包括集成测试）
+# Run all test directories (including integration tests)
 pnpm test:sequential:script
 
-# 跳过集成测试
+# Skip integration tests
 pnpm test:sequential:script:no-integration
 
-# 或者直接运行脚本
+# Or run script directly
 ./scripts/run-tests-sequential.sh
 ./scripts/run-tests-sequential.sh --no-integration
 ```
 
-#### 使用 Node.js 脚本（跨平台）
+#### Using Node.js Script (Cross-platform)
 
 ```bash
-# 运行所有测试目录（包括集成测试）
+# Run all test directories (including integration tests)
 pnpm test:sequential:node
 
-# 跳过集成测试
+# Skip integration tests
 pnpm test:sequential:node:no-integration
 
-# 或者直接运行脚本
+# Or run script directly
 node scripts/run-tests-sequential.js
 node scripts/run-tests-sequential.js --no-integration
 ```
 
-## 测试执行顺序
+## Test Execution Order
 
-测试按以下顺序执行，确保资源使用最优化：
+Tests are executed in the following order to ensure optimal resource usage:
 
-1. **API 测试** (`tests/api/`) - 基础 API 功能测试
-2. **代码解释器测试** (`tests/code_interpreter/`) - 轻量级代码执行测试
-3. **桌面应用测试** (`tests/desktop/`) - 桌面自动化测试
-4. **沙箱测试** (`tests/sandbox/`) - 沙箱环境测试（最复杂）
-5. **集成测试** (`tests/integration/`) - 端到端测试
+1. **API Tests** (`tests/api/`) - Basic API functionality tests
+2. **Code Interpreter Tests** (`tests/code_interpreter/`) - Lightweight code execution tests
+3. **Desktop Application Tests** (`tests/desktop/`) - Desktop automation tests
+4. **Sandbox Tests** (`tests/sandbox/`) - Sandbox environment tests (most complex)
+5. **Integration Tests** (`tests/integration/`) - End-to-end tests
 
-## 环境变量
+## Environment Variables
 
-### 必需的环境变量
+### Required Environment Variables
 
 ```bash
-# Scalebox API 密钥
+# Scalebox API key
 export SCALEBOX_API_KEY="your-api-key-here"
 ```
 
-### 可选的环境变量
+### Optional Environment Variables
 
 ```bash
-# 启用调试模式
+# Enable debug mode
 export SCALEBOX_DEBUG=1
 
-# 启用集成测试
+# Enable integration tests
 export SCALEBOX_INTEGRATION_TEST=1
 ```
 
-## 测试配置
+## Test Configuration
 
-测试配置在 `vitest.config.ts` 中定义：
+Test configuration is defined in `vitest.config.ts`:
 
-- **测试超时**: 5 分钟（适合沙箱操作）
-- **环境**: Node.js
-- **设置文件**: `tests/setup.ts`
+- **Test timeout**: 5 minutes (suitable for sandbox operations)
+- **Environment**: Node.js
+- **Setup file**: `tests/setup.ts`
 
-## 故障排除
+## Troubleshooting
 
-### 常见问题
+### Common Issues
 
-1. **后端并发限制**
-   - 使用顺序测试运行器：`pnpm test:sequential:node`
-   - 避免同时运行多个测试目录
+1. **Backend Concurrency Limitations**
+   - Use sequential test runner: `pnpm test:sequential:node`
+   - Avoid running multiple test directories simultaneously
 
-2. **沙箱资源不足**
-   - 确保 API 密钥有效
-   - 检查网络连接
-   - 使用 `--no-integration` 跳过集成测试
+2. **Insufficient Sandbox Resources**
+   - Ensure API key is valid
+   - Check network connection
+   - Use `--no-integration` to skip integration tests
 
-3. **测试超时**
-   - 检查网络连接
-   - 确保 API 密钥有效
-   - 考虑增加超时时间
+3. **Test Timeout**
+   - Check network connection
+   - Ensure API key is valid
+   - Consider increasing timeout duration
 
-### 调试模式
+### Debug Mode
 
 ```bash
-# 启用调试模式运行测试
+# Run tests with debug mode enabled
 SCALEBOX_DEBUG=1 pnpm test:sequential:node
 ```
 
-## 持续集成
+## Continuous Integration
 
-在 CI/CD 环境中，建议使用：
+In CI/CD environments, it is recommended to use:
 
 ```bash
-# 生产环境测试（跳过集成测试）
+# Production environment tests (skip integration tests)
 pnpm test:sequential:node:no-integration
 
-# 完整测试（包括集成测试）
+# Complete tests (including integration tests)
 pnpm test:sequential:node
 ```
 
-## 性能优化
+## Performance Optimization
 
-1. **并行运行**: 在同一个测试目录内，测试可以并行运行
-2. **顺序执行**: 不同测试目录之间顺序执行，避免资源冲突
-3. **资源清理**: 每个测试目录完成后自动清理资源
-4. **延迟执行**: 测试目录之间有 2 秒延迟，确保资源完全释放
+1. **Parallel Execution**: Tests can run in parallel within the same test directory
+2. **Sequential Execution**: Different test directories execute sequentially to avoid resource conflicts
+3. **Resource Cleanup**: Automatic resource cleanup after each test directory completes
+4. **Delayed Execution**: 2-second delay between test directories to ensure resources are fully released
 
-## 监控和报告
+## Monitoring and Reporting
 
-测试运行器提供详细的执行报告：
+Test runner provides detailed execution reports:
 
-- ✅ 通过的测试目录
-- ❌ 失败的测试目录
-- ⏱️ 执行时间统计
-- 📊 总体测试结果
+- ✅ Passed test directories
+- ❌ Failed test directories
+- ⏱️ Execution time statistics
+- 📊 Overall test results
 
-失败时会显示具体的失败目录，便于快速定位问题。
+When failures occur, specific failed directories are displayed for quick issue identification.
