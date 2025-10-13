@@ -3,7 +3,6 @@
 set -euo pipefail
 
 # This script generates TypeScript gRPC code from Protocol Buffers
-# Based on E2B's excellent design pattern
 # Generates code from spec/grpc/ to src/grpc/
 
 echo "🔧 Generating TypeScript gRPC code from Protocol Buffers..."
@@ -16,7 +15,7 @@ if ! command -v buf &> /dev/null; then
     exit 1
 fi
 
-# Generate gRPC code using buf with E2B-style configuration
+# Generate gRPC code using buf
 echo "🚀 Using buf to generate TypeScript gRPC code..."
 cd spec/grpc
 buf generate

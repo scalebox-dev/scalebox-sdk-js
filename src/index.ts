@@ -1,7 +1,6 @@
 /**
  * Scalebox SDK for JavaScript/TypeScript
  * A powerful SDK for running code in sandboxed environments
- * Based on E2B's excellent design pattern
  */
 
 // Core exports

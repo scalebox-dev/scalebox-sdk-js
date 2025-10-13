@@ -1,14 +1,13 @@
 /**
  * Sandbox 相关类型定义
- * 基于 scalebox-sdk-py 的实际业务场景，结合 E2B 的设计模式
  */
 
 // 从 sandboxApi.ts 导入必要的类型
 export type { SandboxOpts, SandboxApiOpts, SandboxListOpts, SandboxMetricsOpts } from './sandboxApi'
 
-// 统一的沙箱信息结构（E2B兼容 + Scalebox扩展）
+// 统一的沙箱信息结构
 export interface SandboxInfo {
-  // E2B兼容字段
+  // 基础字段
   sandboxId: string
   templateId: string
   name?: string

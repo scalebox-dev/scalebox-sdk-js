@@ -1,6 +1,6 @@
 /**
  * Desktop 模块
- * 基于 E2B 的设计模式，支持桌面自动化功能
+ * 支持桌面自动化功能
  * 提供鼠标、键盘、窗口管理、屏幕操作等功能
  */
 
@@ -227,7 +227,7 @@ class VNCServerImpl implements VNCServer {
 
 /**
  * Desktop - 桌面自动化
- * 基于 E2B 的设计模式，支持完整的桌面自动化功能
+ * 支持完整的桌面自动化功能
  */
 export class Desktop {
   private sandbox: Sandbox

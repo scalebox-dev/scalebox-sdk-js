@@ -29,7 +29,6 @@ Value: <your-api-key>
 - API key is obtained from:
   1. Constructor parameter
   2. Environment variable `SCALEBOX_API_KEY`
-  3. Environment variable `E2B_API_KEY` (for compatibility)
 
 **Example:**
 ```typescript

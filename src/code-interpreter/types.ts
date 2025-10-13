@@ -1,6 +1,5 @@
 /**
  * CodeInterpreter type definitions
- * Based on scalebox-sdk-py business scenarios, integrated with E2B design patterns
  * 
  * This module defines the TypeScript interfaces and types used throughout the
  * Code Interpreter SDK. These types bridge between the generated protobuf types

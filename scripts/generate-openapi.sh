@@ -3,12 +3,11 @@
 set -euo pipefail
 
 # This script generates TypeScript OpenAPI code from OpenAPI specification
-# Based on E2B's excellent design pattern
 # Generates code from spec/openapi/ to src/api/
 
 echo "🔧 Generating TypeScript OpenAPI code from OpenAPI specification..."
 
-# Generate OpenAPI code using openapi-typescript with E2B-style configuration
+# Generate OpenAPI code using openapi-typescript
 echo "🚀 Using openapi-typescript to generate TypeScript OpenAPI code..."
 
 # Generate API schema

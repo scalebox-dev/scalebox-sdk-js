@@ -44,7 +44,7 @@ pnpm add @scalebox/sdk
 ## 配置
 支持从环境变量或 `.env` 文件读取凭据：
 
-- `SBX_API_KEY` 或 `E2B_API_KEY`
+- `SBX_API_KEY`
 
 示例：
 ```env
@@ -56,11 +56,10 @@ SBX_API_KEY=***
 export SBX_API_KEY=***
 ```
 
-## 快速开始（E2B兼容模式）
+## 快速开始
 ```javascript
 import { Sandbox } from '@scalebox/sdk'
 
-// E2B风格的API调用
 const sandbox = await Sandbox.create('code-interpreter', {
   timeoutMs: 300000, // 5分钟
   metadata: { test: 'example' }
@@ -103,7 +102,7 @@ async function main() {
 main()
 ```
 
-## E2B兼容的API示例
+## API 示例
 
 ### 沙箱管理
 ```javascript
@@ -187,24 +186,6 @@ await pty.send('echo "Hello from PTY"')
 // 等待输出
 await pty.wait()
 ```
-
-## E2B 兼容性
-
-Scalebox SDK 与 E2B SDK 完全兼容，您可以无缝迁移：
-
-```typescript
-// E2B 代码
-import { Sandbox } from 'e2b'
-const sandbox = await Sandbox.create('base')
-
-// Scalebox 代码 - 完全一致！
-import { Sandbox } from '@scalebox/sdk'
-const sandbox = await Sandbox.create('code-interpreter') // 使用 code-interpreter 而不是 base
-```
-
-### 迁移指南
-
-查看 [迁移指南](./MIGRATION_GUIDE.md) 了解详细的迁移步骤。
 
 ## 多语言示例
 - Python：`language: "python"`

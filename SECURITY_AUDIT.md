@@ -14,7 +14,7 @@ The security audit found **no critical security vulnerabilities** in the codebas
 - **Findings**: 
   - API keys are properly handled through environment variables
   - No hardcoded API keys found in source code
-  - Proper fallback chain: `opts.apiKey` → `process.env.SCALEBOX_API_KEY` → `process.env.E2B_API_KEY`
+  - Proper fallback chain: `opts.apiKey` → `process.env.SCALEBOX_API_KEY`
   - Keys are not logged or exposed in debug output
 
 ### 2. Environment Variable Security ✅
@@ -51,7 +51,7 @@ The security audit found **no critical security vulnerabilities** in the codebas
 ### 1. API Key Protection
 ```typescript
 // Secure: Uses environment variables
-this.apiKey = opts.apiKey || process.env.SCALEBOX_API_KEY || process.env.E2B_API_KEY
+this.apiKey = opts.apiKey || process.env.SCALEBOX_API_KEY
 
 // Secure: No logging of sensitive data
 if (this.debug) {

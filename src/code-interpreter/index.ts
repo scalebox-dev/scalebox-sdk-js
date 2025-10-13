@@ -25,7 +25,6 @@ import type {
 
 /**
  * CodeInterpreter - Advanced Code Execution Engine
- * Based on scalebox-sdk-py business scenarios, integrated with E2B design patterns
  * Supports multi-language code execution and context management
  * 
  * Key Features:

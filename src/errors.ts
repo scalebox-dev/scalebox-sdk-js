@@ -1,6 +1,5 @@
 /**
  * Error classes for Scalebox SDK
- * Based on E2B's excellent error handling pattern
  */
 
 export class ScaleboxError extends Error {
@@ -54,7 +53,6 @@ export class AuthenticationError extends ScaleboxError {
 
 /**
  * Format sandbox timeout error message
- * Following E2B's error formatting pattern
  */
 export function formatSandboxTimeoutError(timeout: number): string {
   return `Sandbox operation timed out after ${timeout}ms`

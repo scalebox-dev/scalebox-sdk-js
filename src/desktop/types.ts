@@ -1,6 +1,6 @@
 /**
  * Desktop 相关类型定义
- * 基于 E2B 的设计模式，支持桌面自动化功能
+ * 支持桌面自动化功能
  */
 
 export interface CursorPosition {

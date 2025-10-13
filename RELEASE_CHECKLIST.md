@@ -27,7 +27,6 @@
 ### ✅ Documentation
 - [x] README.md comprehensive and up to date
 - [x] API documentation complete
-- [x] Migration guide from E2B
 - [x] Authentication guide
 - [x] Testing documentation
 - [x] Security guidelines

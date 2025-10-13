@@ -1,6 +1,6 @@
 /**
  * 连接配置
- * 基于 E2B 的设计模式，支持完整的配置选项
+ * 支持完整的配置选项
  */
 
 export const DEFAULT_SANDBOX_TIMEOUT_MS = 300_000 // 5 minutes
@@ -75,10 +75,10 @@ export class ConnectionConfig {
   public readonly logger?: ConnectionOpts['logger']
 
   constructor(opts: ConnectionConfigOpts = {}) {
-    this.apiKey = opts.apiKey || process.env.SCALEBOX_API_KEY || process.env.E2B_API_KEY
+    this.apiKey = opts.apiKey || process.env.SCALEBOX_API_KEY
     this.accessToken = opts.accessToken || opts.envdAccessToken || process.env.SCALEBOX_ACCESS_TOKEN || process.env.SCALEBOX_ENVD_ACCESS_TOKEN
     this.envdAccessToken = opts.envdAccessToken || opts.accessToken || process.env.SCALEBOX_ENVD_ACCESS_TOKEN || process.env.SCALEBOX_ACCESS_TOKEN
-    this.apiUrl = opts.apiUrl || process.env.SCALEBOX_API_URL || process.env.E2B_API_URL || 'https://api.scalebox.dev'
+    this.apiUrl = opts.apiUrl || process.env.SCALEBOX_API_URL || 'https://api.scalebox.dev'
     
     // domain is optional - it will be provided by sandbox creation response
     // Do not set a default value here
