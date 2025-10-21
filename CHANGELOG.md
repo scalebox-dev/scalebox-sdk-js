@@ -1,3 +1,10 @@
+## [2.0.2](https://github.com/scalebox-dev/scalebox-sdk-js/compare/v2.0.1...v2.0.2) (2025-10-21)
+
+
+### Bug Fixes
+
+* **deps:** upgrade vite to 7.1.11 to fix security vulnerability ([0c31111](https://github.com/scalebox-dev/scalebox-sdk-js/commit/0c31111fd37b7a842597dd5a9216156d668420ed))
+
 ## [2.0.1](https://github.com/scalebox-dev/scalebox-sdk-js/compare/v2.0.0...v2.0.1) (2025-10-13)
 
 
