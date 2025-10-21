@@ -42,18 +42,43 @@ pnpm add @scalebox/sdk
 ```
 
 ## 配置
-支持从环境变量或 `.env` 文件读取凭据：
 
-- `SBX_API_KEY`
+### 环境变量
 
-示例：
+SDK 支持从环境变量或 `.env` 文件读取配置：
+
+| 变量名 | 必需 | 说明 | 默认值 |
+|--------|------|------|--------|
+| `SCALEBOX_API_KEY` | 是* | API 密钥用于身份验证 | - |
+| `SCALEBOX_ACCESS_TOKEN` | 是* | 访问令牌（API 密钥的替代方案） | - |
+| `SCALEBOX_API_URL` | 否 | API 端点 URL | `https://api.scalebox.dev` |
+| `SCALEBOX_DOMAIN` | 否 | 沙箱自定义域名 | - |
+
+*必须提供 `SCALEBOX_API_KEY` 或 `SCALEBOX_ACCESS_TOKEN` 其中之一。
+
+### 配置示例
+
+**使用环境变量：**
+```bash
+export SCALEBOX_API_KEY=your_api_key_here
+export SCALEBOX_API_URL=https://api.scalebox.dev  # 可选
+```
+
+**使用 .env 文件：**
 ```env
 # .env
-SBX_API_KEY=***
+SCALEBOX_API_KEY=your_api_key_here
+SCALEBOX_API_URL=https://api.scalebox.dev  # 可选
 ```
-或：
-```bash
-export SBX_API_KEY=***
+
+**使用代码配置：**
+```javascript
+import { Sandbox } from '@scalebox/sdk'
+
+const sandbox = await Sandbox.create('code-interpreter', {
+  apiKey: 'your_api_key_here',
+  apiUrl: 'https://api.scalebox.dev'  // 可选
+})
 ```
 
 ## 快速开始
@@ -70,6 +95,9 @@ const isRunning = await sandbox.isRunning()
 console.log('Sandbox is running:', isRunning)
 
 // 获取沙箱信息
+// ⚠️ 注意：getInfo() 返回公开的沙箱元数据
+// 内部属性如 envdAccessToken 和 sandboxDomain 因安全原因被排除
+// 如需访问这些属性，请直接使用 sandbox.sandboxId, sandbox.sandboxDomain
 const info = await sandbox.getInfo()
 console.log('Sandbox info:', info)
 
@@ -87,11 +115,13 @@ await sandbox.kill()
 
 ## 快速开始（代码解释器）
 ```javascript
-import { Sandbox, CodeInterpreter } from '@scalebox/sdk'
+import { CodeInterpreter } from '@scalebox/sdk'
 
 async function main() {
-    const sandbox = await Sandbox.create()
-    const interpreter = new CodeInterpreter(sandbox, sandbox.config)
+    // ✅ 推荐：使用 CodeInterpreter.create() 静态方法
+    const interpreter = await CodeInterpreter.create({
+        templateId: 'code-interpreter'
+    })
     
     const exec = await interpreter.runCode("print('hello from interpreter')", { language: "python" })
     console.log(exec.logs.stdout)
@@ -261,10 +291,10 @@ console.log(res.logs.stdout)
 ## 上下文管理（Context）
 上下文允许跨多次执行复用变量/状态，使用真实的 gRPC 服务：
 ```javascript
-import { Sandbox, CodeInterpreter } from '@scalebox/sdk'
+import { CodeInterpreter } from '@scalebox/sdk'
 
-const sandbox = await Sandbox.create()
-const interpreter = new CodeInterpreter(sandbox, sandbox.config)
+// ✅ 推荐：使用静态创建方法
+const interpreter = await CodeInterpreter.create()
 
 // 创建上下文（使用 gRPC）
 const ctx = await interpreter.createCodeContext({ language: "python", cwd: "/tmp" })

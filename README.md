@@ -44,18 +44,43 @@ pnpm add @scalebox/sdk
 ```
 
 ## Configuration
-Supports reading credentials from environment variables or `.env` file:
 
-- `SBX_API_KEY`
+### Environment Variables
 
-Example:
+The SDK supports reading configuration from environment variables or `.env` file:
+
+| Variable | Required | Description | Default |
+|----------|----------|-------------|---------|
+| `SCALEBOX_API_KEY` | Yes* | API key for authentication | - |
+| `SCALEBOX_ACCESS_TOKEN` | Yes* | Access token (alternative to API key) | - |
+| `SCALEBOX_API_URL` | No | API endpoint URL | `https://api.scalebox.dev` |
+| `SCALEBOX_DOMAIN` | No | Custom domain for sandboxes | - |
+
+*Either `SCALEBOX_API_KEY` or `SCALEBOX_ACCESS_TOKEN` must be provided.
+
+### Example Configuration
+
+**Using environment variables:**
+```bash
+export SCALEBOX_API_KEY=your_api_key_here
+export SCALEBOX_API_URL=https://api.scalebox.dev  # optional
+```
+
+**Using .env file:**
 ```env
 # .env
-SBX_API_KEY=***
+SCALEBOX_API_KEY=your_api_key_here
+SCALEBOX_API_URL=https://api.scalebox.dev  # optional
 ```
-Or:
-```bash
-export SBX_API_KEY=***
+
+**Using code configuration:**
+```javascript
+import { Sandbox } from '@scalebox/sdk'
+
+const sandbox = await Sandbox.create('code-interpreter', {
+  apiKey: 'your_api_key_here',
+  apiUrl: 'https://api.scalebox.dev'  // optional
+})
 ```
 
 ## Quick Start
@@ -72,6 +97,9 @@ const isRunning = await sandbox.isRunning()
 console.log('Sandbox is running:', isRunning)
 
 // Get sandbox information
+// ⚠️ Note: getInfo() returns public sandbox metadata
+// Internal properties like envdAccessToken and sandboxDomain are excluded for security
+// Use sandbox.sandboxId, sandbox.sandboxDomain directly if needed
 const info = await sandbox.getInfo()
 console.log('Sandbox info:', info)
 
@@ -89,11 +117,13 @@ await sandbox.kill()
 
 ## Quick Start (Code Interpreter)
 ```javascript
-import { Sandbox, CodeInterpreter } from '@scalebox/sdk'
+import { CodeInterpreter } from '@scalebox/sdk'
 
 async function main() {
-    const sandbox = await Sandbox.create()
-    const interpreter = new CodeInterpreter(sandbox, sandbox.config)
+    // ✅ Recommended: Use CodeInterpreter.create() static method
+    const interpreter = await CodeInterpreter.create({
+        templateId: 'code-interpreter'
+    })
     
     const exec = await interpreter.runCode("print('hello from interpreter')", { language: "python" })
     console.log(exec.logs.stdout)
@@ -263,10 +293,10 @@ console.log(res.logs.stdout)
 ## Context Management
 Context allows reusing variables/state across multiple executions using real gRPC service:
 ```javascript
-import { Sandbox, CodeInterpreter } from '@scalebox/sdk'
+import { CodeInterpreter } from '@scalebox/sdk'
 
-const sandbox = await Sandbox.create()
-const interpreter = new CodeInterpreter(sandbox, sandbox.config)
+// ✅ Recommended: Use static create method
+const interpreter = await CodeInterpreter.create()
 
 // Create context (using gRPC)
 const ctx = await interpreter.createCodeContext({ language: "python", cwd: "/tmp" })

@@ -323,7 +323,6 @@ export class SandboxApi {
       // 添加sandboxDomain信息
       return {
         ...sandboxInfo,
-        sandboxDomain: config.domain
       }
     } catch (error) {
       throw new NotFoundError(`Sandbox ${sandboxId} not found`)

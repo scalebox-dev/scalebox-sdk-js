@@ -3,7 +3,7 @@
  * 基于 scalebox-sdk-py 的实际业务场景
  */
 
-import { Sandbox, CodeInterpreter } from './dist/index.mjs'
+import { Sandbox, CodeInterpreter } from './dist/index.js'
 
 async function main() {
   console.log('🚀 Scalebox JavaScript SDK 示例')
