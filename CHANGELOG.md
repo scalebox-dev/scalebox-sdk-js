@@ -1,3 +1,15 @@
+# [2.2.0](https://github.com/scalebox-dev/scalebox-sdk-js/compare/v2.1.0...v2.2.0) (2025-10-22)
+
+
+### Bug Fixes
+
+* **tests:** update sandbox tests for new API conventions ([a1686df](https://github.com/scalebox-dev/scalebox-sdk-js/commit/a1686dfb99dd27169048863d0f09409408c3ea24))
+
+
+### Features
+
+* **sandbox:** add runCode convenience method and improve API types ([c853542](https://github.com/scalebox-dev/scalebox-sdk-js/commit/c853542881a1676785f5f9073a3426f36b6e2cb9))
+
 # [2.1.0](https://github.com/scalebox-dev/scalebox-sdk-js/compare/v2.0.2...v2.1.0) (2025-10-22)
 
 
