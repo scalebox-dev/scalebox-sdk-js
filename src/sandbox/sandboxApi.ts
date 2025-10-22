@@ -366,12 +366,7 @@ export class SandboxApi {
     template: string,
     timeoutMs: number,
     opts?: SandboxBetaCreateOpts
-  ): Promise<{
-    sandboxId: string
-    sandboxDomain?: string
-    envdVersion: string
-    envdAccessToken?: string
-  }> {
+  ): Promise<SandboxInfo> {
     const config = new ConnectionConfig({
       apiKey: opts?.apiKey,
       apiUrl: opts?.apiUrl,
@@ -415,12 +410,8 @@ export class SandboxApi {
         throw new ScaleboxError('Sandbox creation failed: envdAccessToken not returned from API')
       }
 
-      return {
-        sandboxId: sandboxInfo.sandboxId,
-        sandboxDomain: sandboxInfo.sandboxDomain,
-        envdVersion: sandboxInfo.envdVersion || '1.0.0',
-        envdAccessToken: sandboxInfo.envdAccessToken
-      }
+      // Return the full sandbox info
+      return sandboxInfo
     } catch (error) {
       throw new ScaleboxError(`Failed to create sandbox: ${error}`)
     }

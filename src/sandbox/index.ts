@@ -1,5 +1,5 @@
 import { ApiClient } from '../api'
-import { GrpcClient } from '../grpc/client'
+import { GrpcClient } from '../grpc'
 import { ConnectionConfig, ConnectionOpts, DEFAULT_SANDBOX_TIMEOUT_MS } from '../connectionConfig'
 import { 
   SandboxOpts, 
@@ -17,6 +17,7 @@ import { Commands } from './commands'
 import { Pty } from './pty'
 import { ProcessManager } from './process'
 import { SandboxApi } from './sandboxApi'
+import type { CodeExecutionOpts, ExecutionResult, Language } from '../code-interpreter'
 
 /**
  * Scalebox cloud sandbox is a secure and isolated cloud environment.
@@ -72,6 +73,14 @@ export class Sandbox {
 
   /**
    * Access token for sandbox operations.
+   * 
+   * @internal
+   * This property is used internally for authentication with sandbox services.
+   * It should not be accessed directly in normal usage. Modifying this value
+   * may cause unexpected behavior.
+   * 
+   * Similar to AWS SDK's internal credentials, this is exposed for advanced
+   * use cases and internal modules but is not part of the stable public API.
    */
   readonly envdAccessToken?: string
 
@@ -79,6 +88,7 @@ export class Sandbox {
   protected readonly api: ApiClient
   protected readonly grpcClient: GrpcClient
   private readonly envs: Record<string, string> = {}
+  private codeInterpreter?: any // Lazy-loaded CodeInterpreter instance
 
   /**
    * Use {@link Sandbox.create} to create a new Sandbox instead.
@@ -612,6 +622,38 @@ export class Sandbox {
       ...this.connectionConfig,
       ...opts,
     })
+  }
+
+  /**
+   * Execute code in the sandbox using the code interpreter.
+   * This is a convenience method that wraps CodeInterpreter functionality.
+   *
+   * @param code code to execute.
+   * @param opts execution options including language and context.
+   *
+   * @returns execution result containing stdout, stderr, exit code, and more.
+   *
+   * @example
+   * ```ts
+   * const sandbox = await Sandbox.create('code-interpreter')
+   * const result = await sandbox.runCode("print('Hello World')", { 
+   *   language: 'python' 
+   * })
+   * console.log(result.text) // "Hello World\n"
+   * ```
+   */
+  async runCode(
+    code: string,
+    opts: Omit<CodeExecutionOpts, 'code'> & { language: Language }
+  ): Promise<ExecutionResult> {
+    // Lazy-load CodeInterpreter
+    if (!this.codeInterpreter) {
+      // Import CodeInterpreter dynamically to avoid circular dependencies
+      const { CodeInterpreter } = await import('../code-interpreter')
+      this.codeInterpreter = new CodeInterpreter(this, this.connectionConfig, this.api)
+    }
+
+    return await this.codeInterpreter.runCode(code, opts)
   }
 }
 
