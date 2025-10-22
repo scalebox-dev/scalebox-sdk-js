@@ -109,8 +109,8 @@ This is a test file created from SBX Sandbox SDK.
 Current time: ${new Date().toString()}
 `
     
-    // Write file using sandbox filesystem
-    await desktop.sandbox.files.write('/tmp/test_file.txt', testContent)
+    // Write file using filesystem API (业界最佳实践：提供快捷访问)
+    await desktop.files.write('/tmp/test_file.txt', testContent)
     console.log('已创建测试文件')
     
     // 6. Screenshot functionality (as in testcomputeuse.py)
@@ -140,7 +140,7 @@ print("success!")
 `
       
       const scriptPath = '/tmp/automation_script.py'
-      await desktop.sandbox.files.write(scriptPath, pythonScript)
+      await desktop.files.write(scriptPath, pythonScript)
       
       await desktop.automation.keyboard.type(`python3 ${scriptPath}\n`)
     }
