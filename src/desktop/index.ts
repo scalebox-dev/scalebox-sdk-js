@@ -5,6 +5,9 @@
  */
 
 import { Sandbox } from '../sandbox'
+import { Filesystem } from '../sandbox/filesystem'
+import { ProcessManager } from '../sandbox/process'
+import { Commands } from '../sandbox/commands'
 import { ConnectionConfig } from '../connectionConfig'
 import { ApiClient } from '../api'
 import { 
@@ -15,6 +18,9 @@ import {
   WindowInfo,
   MouseButtonType,
   VNCServer,
+  VNCServerStatus,
+  VNCServerStartOptions,
+  VNCConnectionUrlOptions,
   DesktopStream
 } from './types'
 import { ScaleboxError } from '../errors'
@@ -104,15 +110,38 @@ class VNCServerImpl implements VNCServer {
   private _novncAuthEnabled = false
   private _novncPassword?: string
   private _url = ""
-
-  public port: number
-  public password?: string
-  public readonly: boolean
+  private _status: VNCServerStatus = 'idle'
 
   constructor(desktop: Desktop) {
     this.desktop = desktop
-    this.port = this._port
-    this.readonly = false
+  }
+
+  /**
+   * 获取服务器状态
+   */
+  get status(): VNCServerStatus {
+    return this._status
+  }
+
+  /**
+   * 获取端口号
+   */
+  get port(): number {
+    return this._port
+  }
+
+  /**
+   * 获取密码
+   */
+  get password(): string | undefined {
+    return this._novncPassword
+  }
+
+  /**
+   * 是否只读模式
+   */
+  get readonly(): boolean {
+    return false
   }
 
   /**
@@ -150,14 +179,30 @@ class VNCServerImpl implements VNCServer {
   }
 
   /**
+   * 检查服务器是否正在运行
+   */
+  isRunning(): boolean {
+    return this._status === 'running'
+  }
+
+  /**
    * 获取连接URL
    */
-  getConnectionUrl(autoConnect = true, viewOnly = false, resize = "scale", authKey?: string): string {
+  getConnectionUrl(options?: VNCConnectionUrlOptions): string {
+    const {
+      autoConnect = true,
+      viewOnly = false,
+      resize = 'scale',
+      authKey
+    } = options || {}
+
     const params: string[] = []
     if (autoConnect) params.push("autoconnect=true")
     if (viewOnly) params.push("view_only=true")
     if (resize) params.push(`resize=${resize}`)
-    if (authKey) params.push(`password=${authKey}`)
+    
+    const key = authKey || this._novncPassword
+    if (key) params.push(`password=${key}`)
     
     return params.length > 0 ? `${this._url}?${params.join('&')}` : this._url
   }
@@ -174,54 +219,147 @@ class VNCServerImpl implements VNCServer {
 
   /**
    * 启动VNC服务器
+   * 
+   * 如果检测到残留的VNC进程，会先自动清理
    */
-  async start(vncPort?: number, port?: number, requireAuth = false, windowId?: string): Promise<void> {
-    // 检查是否已经运行
-    if (await this.checkVncRunning()) {
+  async start(options?: VNCServerStartOptions): Promise<void> {
+    // 如果当前实例已经在运行，直接抛出错误
+    if (this._status === 'running') {
       throw new Error('Stream is already running')
     }
-
-    // 更新配置
-    this._vncPort = vncPort || this._vncPort
-    this._port = port || this._port
-    this._novncAuthEnabled = requireAuth
-    this._novncPassword = requireAuth ? VNCServerImpl.generatePassword() : undefined
-    this.port = this._port
-    this.password = this._novncPassword
-
-    // 设置VNC命令
-    let pwdFlag = "-nopw"
-    if (this._novncAuthEnabled && this._novncPassword) {
-      await this.desktop.executeCommand("mkdir -p ~/.vnc")
-      await this.desktop.executeCommand(`x11vnc -storepasswd ${this._novncPassword} ~/.vnc/passwd`)
-      pwdFlag = "-usepw"
+    
+    // 检查是否有残留的VNC进程
+    const isRunning = await this.checkVncRunning()
+    
+    if (isRunning) {
+      // 尝试自动清理残留进程（可能是其他实例留下的）
+      try {
+        // 先尝试温和终止
+        await this.desktop.executeCommand('pkill x11vnc || true')
+        await this.desktop.executeCommand('pkill -f novnc_proxy || true')
+        
+        // 等待进程终止
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        
+        // 检查是否还在运行
+        if (await this.checkVncRunning()) {
+          // 如果还在运行，使用强制终止
+          await this.desktop.executeCommand('pkill -9 x11vnc || true')
+          await this.desktop.executeCommand('pkill -9 -f novnc_proxy || true')
+          await new Promise(resolve => setTimeout(resolve, 1000))
+        }
+        
+        // 最后检查
+        if (await this.checkVncRunning()) {
+          console.warn('VNC processes still running after cleanup attempts')
+          // 不再抛出错误，允许继续启动（可能是不同的VNC进程）
+        }
+      } catch (error) {
+        console.warn('Error during VNC cleanup:', error)
+        // 不抛出错误，允许继续尝试启动
+      }
+      
+      // 重置状态
+      this._status = 'idle'
     }
 
-    const windowIdFlag = windowId ? `-id ${windowId}` : ""
-    const vncCommand = `DISPLAY=${this.desktop.display} x11vnc -bg -display ${this.desktop.display} -forever -wait 50 -shared -rfbport ${this._vncPort} ${pwdFlag} 2>/tmp/x11vnc_stderr.log ${windowIdFlag}`
-    const novncCommand = `cd /opt/noVNC/utils && ./novnc_proxy --vnc localhost:${this._vncPort} --listen ${this._port} --web /opt/noVNC > /tmp/novnc.log 2>&1 &`
+    this._status = 'starting'
 
-    await this.desktop.executeCommand(vncCommand)
-    // Note: In real implementation, we'd need to handle background processes properly
-    await this.desktop.executeCommand(novncCommand)
-    
-    if (!(await this.waitForPort(this._port))) {
-      throw new Error("Could not start noVNC server")
+    try {
+      // 提取配置
+      const {
+        vncPort = 5900,
+        port = 6080,
+        requireAuth = false,
+        windowId
+      } = options || {}
+
+      // 更新配置
+      this._vncPort = vncPort
+      this._port = port
+      this._novncAuthEnabled = requireAuth
+      this._novncPassword = requireAuth ? VNCServerImpl.generatePassword() : undefined
+
+      // 设置VNC命令
+      let pwdFlag = "-nopw"
+      if (this._novncAuthEnabled && this._novncPassword) {
+        await this.desktop.executeCommand("mkdir -p ~/.vnc")
+        await this.desktop.executeCommand(`x11vnc -storepasswd ${this._novncPassword} ~/.vnc/passwd`)
+        pwdFlag = "-usepw"
+      }
+
+      const windowIdFlag = windowId ? `-id ${windowId}` : ""
+      const vncCommand = `DISPLAY=${this.desktop.display} x11vnc -bg -display ${this.desktop.display} -forever -wait 50 -shared -rfbport ${this._vncPort} ${pwdFlag} 2>/tmp/x11vnc_stderr.log ${windowIdFlag}`
+      const novncCommand = `cd /opt/noVNC/utils && ./novnc_proxy --vnc localhost:${this._vncPort} --listen ${this._port} --web /opt/noVNC > /tmp/novnc.log 2>&1 &`
+
+      await this.desktop.executeCommand(vncCommand)
+      await this.desktop.executeCommand(novncCommand)
+      
+      if (!(await this.waitForPort(this._port))) {
+        this._status = 'error'
+        throw new Error("Could not start noVNC server")
+      }
+
+      this._status = 'running'
+    } catch (error) {
+      this._status = 'error'
+      throw error
     }
   }
 
   /**
    * 停止VNC服务器
+   * 
+   * 幂等操作：如果服务器未运行，此方法不会抛出错误
+   * 
+   * @throws 仅在实际停止过程中发生错误时抛出
    */
   async stop(): Promise<void> {
-    if (await this.checkVncRunning()) {
-      await this.desktop.executeCommand('pkill x11vnc')
+    // 检查是否正在运行
+    const isRunning = await this.checkVncRunning()
+    
+    if (!isRunning) {
+      // 幂等操作：如果未运行，直接返回
+      this._status = 'idle'
+      return
     }
 
-    if (this.novncHandle) {
-      // In real implementation, we'd need to kill the background process
-      this.novncHandle = undefined
+    this._status = 'stopping'
+
+    try {
+      // 停止x11vnc和novnc进程
+      await this.desktop.executeCommand('pkill x11vnc || true')
+      await this.desktop.executeCommand('pkill -f novnc_proxy || true')
+      
+      // 等待进程终止
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
+      // 如果还在运行，强制终止
+      if (await this.checkVncRunning()) {
+        await this.desktop.executeCommand('pkill -9 x11vnc || true')
+        await this.desktop.executeCommand('pkill -9 -f novnc_proxy || true')
+        await new Promise(resolve => setTimeout(resolve, 500))
+      }
+
+      if (this.novncHandle) {
+        this.novncHandle = undefined
+      }
+
+      this._status = 'idle'
+    } catch (error) {
+      this._status = 'error'
+      throw error
     }
+  }
+
+  /**
+   * 重启VNC服务器
+   */
+  async restart(options?: VNCServerStartOptions): Promise<void> {
+    if (await this.checkVncRunning()) {
+      await this.stop()
+    }
+    await this.start(options)
   }
 }
 
@@ -230,7 +368,7 @@ class VNCServerImpl implements VNCServer {
  * 支持完整的桌面自动化功能
  */
 export class Desktop {
-  private sandbox: Sandbox
+  private _sandbox: Sandbox
   private api: ApiClient
   private config: ConnectionConfig
   private vncServerInstance?: VNCServerImpl
@@ -248,7 +386,7 @@ export class Desktop {
       sandboxId?: string
     }
   ) {
-    this.sandbox = sandbox
+    this._sandbox = sandbox
     this.api = api
     this.config = config
     this._display = options?.display || ':0'
@@ -652,8 +790,39 @@ export class Desktop {
    */
   async getCurrentWindowId(): Promise<string> {
     try {
-      const result = await this.executeCommand(`DISPLAY=${this._display} xdotool getwindowfocus`)
-      return result.stdout.trim()
+      // 重试几次，因为桌面环境可能还在初始化
+      let retries = 3
+      let windowId = ''
+      
+      while (retries > 0 && !windowId) {
+        try {
+          const result = await this.executeCommand(`DISPLAY=${this._display} xdotool getwindowfocus`)
+          windowId = result.stdout.trim()
+          
+          if (windowId && windowId !== '0' && windowId !== '') {
+            return windowId
+          }
+        } catch (e) {
+          // 忽略错误，继续重试
+        }
+        
+        if (!windowId || windowId === '0' || windowId === '') {
+          retries--
+          if (retries > 0) {
+            await new Promise(resolve => setTimeout(resolve, 1000))
+          }
+        }
+      }
+      
+      // 如果还是没有窗口，返回根窗口ID
+      if (!windowId || windowId === '0' || windowId === '') {
+        const result = await this.executeCommand(`DISPLAY=${this._display} xdotool getdisplaygeometry`)
+        // 返回根窗口ID（通常是显示器的根窗口）
+        const rootResult = await this.executeCommand(`DISPLAY=${this._display} xwininfo -root | grep 'Window id' | awk '{print $4}'`)
+        return rootResult.stdout.trim()
+      }
+      
+      return windowId
     } catch (error) {
       throw new ScaleboxError(`Failed to get current window ID: ${error}`)
     }
@@ -841,11 +1010,21 @@ except Exception as e:
       
       const result = await this.executeCommand(`python3 -c "${pythonScript}"`)
       
-      if (result.stdout.trim() === 'null') {
+      const output = result.stdout.trim()
+      if (output === 'null' || output === '') {
         return null
       }
       
-      const [x, y] = result.stdout.trim().split(',').map(Number)
+      const parts = output.split(',')
+      if (parts.length !== 2) {
+        return null
+      }
+      
+      const [x, y] = parts.map(Number)
+      if (isNaN(x) || isNaN(y)) {
+        return null
+      }
+      
       return { x, y }
     } catch (error) {
       throw new ScaleboxError(`Failed to find image: ${error}`)
@@ -896,11 +1075,21 @@ except Exception as e:
       
       const result = await this.executeCommand(`python3 -c "${pythonScript}"`)
       
-      if (result.stdout.trim() === 'null') {
+      const output = result.stdout.trim()
+      if (output === 'null' || output === '') {
         return null
       }
       
-      const [x, y] = result.stdout.trim().split(',').map(Number)
+      const parts = output.split(',')
+      if (parts.length !== 2) {
+        return null
+      }
+      
+      const [x, y] = parts.map(Number)
+      if (isNaN(x) || isNaN(y)) {
+        return null
+      }
+      
       return { x, y }
     } catch (error) {
       throw new ScaleboxError(`Failed to find text: ${error}`)
@@ -912,10 +1101,13 @@ except Exception as e:
    */
   async launch(application: string, uri?: string): Promise<void> {
     try {
+      // 使用后台启动，避免等待应用完全启动导致超时
       const command = uri 
-        ? `DISPLAY=${this._display} gtk-launch ${application} "${uri}"` 
-        : `DISPLAY=${this._display} gtk-launch ${application}`
+        ? `DISPLAY=${this._display} nohup gtk-launch ${application} "${uri}" > /dev/null 2>&1 &` 
+        : `DISPLAY=${this._display} nohup gtk-launch ${application} > /dev/null 2>&1 &`
       await this.executeCommand(command)
+      // 等待一小段时间让应用开始启动
+      await new Promise(resolve => setTimeout(resolve, 500))
     } catch (error) {
       throw new ScaleboxError(`Failed to launch application: ${error}`)
     }
@@ -923,7 +1115,10 @@ except Exception as e:
 
   async open(fileOrUrl: string): Promise<void> {
     try {
-      await this.executeCommand(`DISPLAY=${this._display} xdg-open "${fileOrUrl}"`)
+      // 使用后台启动，避免等待应用完全启动导致超时
+      await this.executeCommand(`DISPLAY=${this._display} nohup xdg-open "${fileOrUrl}" > /dev/null 2>&1 &`)
+      // 等待一小段时间让应用开始启动
+      await new Promise(resolve => setTimeout(resolve, 500))
     } catch (error) {
       throw new ScaleboxError(`Failed to open file or URL: ${error}`)
     }
@@ -956,24 +1151,100 @@ except Exception as e:
   }
 
   /**
+   * 获取底层 Sandbox 实例
+   * 提供对底层沙箱功能的完整访问（文件系统、进程管理等）
+   * 
+   * 遵循业界最佳实践：
+   * - Docker SDK: client.containers, client.images
+   * - Kubernetes: client.core_v1_api
+   * - AWS SDK: client.s3, client.ec2
+   * 
+   * @example
+   * ```typescript
+   * // 访问文件系统
+   * await desktop.sandbox.files.write('/tmp/file.txt', 'content')
+   * 
+   * // 访问进程管理
+   * const proc = await desktop.sandbox.process.start({ cmd: 'python3 script.py' })
+   * ```
+   */
+  get sandbox(): Sandbox {
+    return this._sandbox
+  }
+
+  /**
+   * 文件系统快捷访问
+   * 提供便捷的文件操作接口，无需通过 sandbox
+   * 
+   * @example
+   * ```typescript
+   * await desktop.files.write('/tmp/file.txt', 'content')
+   * const content = await desktop.files.read('/tmp/file.txt')
+   * ```
+   */
+  get files(): Filesystem {
+    return this._sandbox.files
+  }
+
+  /**
+   * 进程管理快捷访问
+   * 提供便捷的进程操作接口，无需通过 sandbox
+   * 
+   * @example
+   * ```typescript
+   * const proc = await desktop.processes.start({ cmd: 'python3 script.py' })
+   * await desktop.processes.kill(proc.pid)
+   * ```
+   */
+  get processes(): ProcessManager {
+    return this._sandbox.processes
+  }
+
+  /**
+   * 命令执行快捷访问
+   * 提供便捷的命令执行接口，无需通过 sandbox
+   * 
+   * @example
+   * ```typescript
+   * const result = await desktop.commands.run('ls -la')
+   * console.log(result.stdout)
+   * ```
+   */
+  get commands(): Commands {
+    return this._sandbox.commands
+  }
+
+  /**
    * 获取沙箱ID
    */
   getSandboxId(): string | undefined {
-    return this.sandbox.sandboxId
+    return this._sandbox.sandboxId
   }
 
   /**
    * 获取沙箱信息
    */
   async getInfo() {
-    return await this.sandbox.getInfo()
+    return await this._sandbox.getInfo()
   }
 
   /**
    * 关闭桌面环境
+   * 自动停止VNC服务器（如果正在运行）并清理sandbox
    */
   async close(): Promise<void> {
-    await this.sandbox.kill()
+    // 先尝试停止VNC服务器（幂等操作）
+    try {
+      // 只在服务器可能运行时才尝试停止
+      if (this.vncServerInstance && this.stream.isRunning()) {
+        await this.stream.stop()
+      }
+    } catch (error) {
+      // 忽略停止VNC时的错误，确保sandbox能被清理
+      console.warn('Failed to stop VNC server during cleanup:', error)
+    }
+    
+    await this._sandbox.kill()
   }
 
   /**
@@ -982,7 +1253,7 @@ except Exception as e:
   async executeCommand(command: string): Promise<{ stdout: string; stderr: string; exitCode: number }> {
     try {
       // 通过沙箱执行命令
-      const result = await this.sandbox.commands.run(command)
+      const result = await this._sandbox.commands.run(command)
       return {
         stdout: result.stdout,
         stderr: result.stderr,
