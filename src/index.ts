@@ -24,6 +24,10 @@ export type {
   WindowInfo,
   MouseButtonType,
   VNCServer,
+  VNCServerStatus,
+  VNCServerStartOptions,
+  VNCConnectionUrlOptions,
+  VNCResizeMode,
   DesktopStream
 } from './desktop/types'
 
