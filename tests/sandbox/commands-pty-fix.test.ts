@@ -6,7 +6,7 @@ describe('Commands and PTY Fix Tests', () => {
 
   beforeAll(async () => {
     console.log('🚀 Creating sandbox for Commands/PTY fix tests...')
-    sandbox = await Sandbox.create({ template: 'base' })
+    sandbox = await Sandbox.create({ templateId: 'base' })
     console.log(`✅ Sandbox created: ${sandbox.sandboxId}`)
   })
 

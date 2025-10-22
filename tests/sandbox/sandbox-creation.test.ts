@@ -31,22 +31,21 @@ describe('Sandbox Creation Test', () => {
       console.log('📊 Sandbox Information:')
       console.log('=====================================')
       
+      // 获取沙盒详细信息
+      const info = await sandbox.getInfo()
+      
       // 输出沙盒基本信息
-      console.log(`Sandbox ID: ${sandbox.sandboxId || 'Not available'}`)
+      console.log(`Sandbox ID: ${sandbox.sandboxId}`)
       console.log(`Sandbox Domain: ${sandbox.sandboxDomain}`)
-      console.log(`Sandbox Status: ${sandbox.status || 'Not available'}`)
+      console.log(`Sandbox Status: ${info.status}`)
+      console.log(`Template: ${info.templateName || info.templateId}`)
+      console.log(`Timeout: ${info.timeout} seconds`)
       
-      // 输出连接配置信息
-      console.log('\n🔗 Connection Configuration:')
-      console.log(`- gRPC Endpoint: ${sandbox.grpcEndpoint || 'Not available'}`)
-      console.log(`- HTTP Endpoint: ${sandbox.httpEndpoint || 'Not available'}`)
-      console.log(`- WebSocket Endpoint: ${sandbox.wsEndpoint || 'Not available'}`)
-      
-      // 输出认证信息
-      console.log('\n🔐 Authentication:')
-      console.log(`- API Key: ${sandbox.apiKey ? 'Present' : 'Not present'}`)
-      console.log(`- Bearer Token: ${sandbox.bearerToken ? 'Present' : 'Not present'}`)
-      console.log(`- Envd Access Token: ${sandbox.envdAccessToken ? 'Present' : 'Not present'}`)
+      // 输出资源配置
+      console.log('\n⚙️ Resource Configuration:')
+      console.log(`- CPU: ${info.cpuCount} cores`)
+      console.log(`- Memory: ${info.memoryMB} MB`)
+      console.log(`- Started At: ${info.startedAt.toISOString()}`)
       
       // 输出健康检查信息
       console.log('\n🏥 Health Check:')
@@ -57,33 +56,24 @@ describe('Sandbox Creation Test', () => {
         console.log('⚠️ Health check failed:', error)
       }
       
-      // 输出沙盒详细配置
-      console.log('\n⚙️ Sandbox Configuration:')
-      console.log(`- Template: code-interpreter`)
-      console.log(`- Timeout: ${sandbox.timeout || 'Default'}`)
-      console.log(`- Created At: ${new Date().toISOString()}`)
-      console.log(`- Filesystem Handler: ${sandbox.files ? 'Available' : 'Not available'}`)
-      console.log(`- Commands Handler: ${sandbox.commands ? 'Available' : 'Not available'}`)
-      console.log(`- Pty Handler: ${sandbox.pty ? 'Available' : 'Not available'}`)
-      
       // 测试基本连接
-      console.log('\n🧪 Testing Basic Connectivity:')
+      console.log('\n🧪 Testing SDK Capabilities:')
       try {
         // 测试文件系统连接
         const filesystem = sandbox.files
-        console.log('✅ Filesystem handler available')
+        console.log('✅ Filesystem API available')
         
         // 测试命令执行连接
         const commands = sandbox.commands
-        console.log('✅ Commands handler available')
+        console.log('✅ Commands API available')
         
         // 测试伪终端连接
         const pty = sandbox.pty
-        console.log('✅ Pty handler available')
+        console.log('✅ Pty API available')
         
         // 测试进程管理连接
         const processes = sandbox.processes
-        console.log('✅ Process manager available')
+        console.log('✅ Process API available')
         
       } catch (error) {
         console.log('❌ Connection test failed:', error)
@@ -100,6 +90,11 @@ describe('Sandbox Creation Test', () => {
       expect(sandbox.commands).toBeDefined()
       expect(sandbox.pty).toBeDefined()
       expect(sandbox.processes).toBeDefined()
+      
+      // 验证 getInfo 返回有效数据
+      expect(info.sandboxId).toBe(sandbox.sandboxId)
+      expect(info.status).toBeDefined()
+      expect(info.timeout).toBeGreaterThan(0)
       
     } catch (error) {
       console.error('❌ Sandbox creation failed:', error)
