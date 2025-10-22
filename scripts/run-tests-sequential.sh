@@ -13,7 +13,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # 测试目录配置
-TEST_DIRS="api:tests/api/** code-interpreter:tests/code_interpreter/** desktop:tests/desktop/** sandbox:tests/sandbox/** integration:tests/integration/**"
+TEST_DIRS="api:tests/api/** code-interpreter:tests/code-interpreter/** desktop:tests/desktop/** sandbox:tests/sandbox/** integration:tests/integration/**"
 
 # 测试结果统计
 TOTAL_TESTS=0
