@@ -1,3 +1,16 @@
+# [2.1.0](https://github.com/scalebox-dev/scalebox-sdk-js/compare/v2.0.2...v2.1.0) (2025-10-22)
+
+
+### Bug Fixes
+
+* **desktop:** resolve all desktop test failures and improve stability ([8a4c451](https://github.com/scalebox-dev/scalebox-sdk-js/commit/8a4c4516cb7371c11c6516b8d3af48b4476c7c4b))
+* **scripts:** correct code-interpreter test path ([c7a9b19](https://github.com/scalebox-dev/scalebox-sdk-js/commit/c7a9b196170f07a45a9ad200768fb4d651c29450))
+
+
+### Features
+
+* **desktop:** export new VNC Server types ([c819335](https://github.com/scalebox-dev/scalebox-sdk-js/commit/c819335e8764e2b4d80783215733b496586c60bd))
+
 ## [2.0.2](https://github.com/scalebox-dev/scalebox-sdk-js/compare/v2.0.1...v2.0.2) (2025-10-21)
 
 
