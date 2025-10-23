@@ -7,14 +7,6 @@ import os from 'os'
 
 const timeout = 60_000
 
-// Backend saves uploaded files to /workspace with preserved directory structure
-const BACKEND_WORKSPACE_PREFIX = '/workspace'
-
-// Helper function to convert requested path to actual backend storage path
-function getActualFilePath(requestedPath: string): string {
-  return `${BACKEND_WORKSPACE_PREFIX}${requestedPath}`
-}
-
 // Health check function - now using the built-in waitForHealth method with 10s timeout
 async function waitForSandboxHealth(sandbox: Sandbox) {
   await sandbox.waitForHealth({ timeout: 10_000 }) // 10 seconds timeout
@@ -62,9 +54,8 @@ describe('File Upload and Download', () => {
     expect(result.name).toBe('uploaded-test.txt')
     expect(result.type).toBe('file')
     
-    // Verify file exists at actual storage location (backend saves to /workspace)
-    const actualPath = getActualFilePath(remotePath)
-    const actualDir = path.dirname(actualPath)
+    // Verify file exists at actual storage location
+    const actualDir = path.dirname(remotePath)
     
     const actualFiles = await sandbox.files.list(actualDir)
     const uploadedFile = actualFiles.find(file => file.name === 'uploaded-test.txt')
@@ -74,7 +65,7 @@ describe('File Upload and Download', () => {
     expect(uploadedFile!.type).toBe('file')
     
     // Verify file properties via stat
-    const fileInfo = await sandbox.files.stat(actualPath)
+    const fileInfo = await sandbox.files.stat(remotePath)
     expect(fileInfo.name).toBe('uploaded-test.txt')
     expect(fileInfo.type).toBe('file')
     expect(Number(fileInfo.size)).toBe(71)
@@ -89,9 +80,8 @@ describe('File Upload and Download', () => {
     // Create file in sandbox first using write (also uses HTTP upload)
     await sandbox.files.write(remotePath, testContent)
     
-    // Verify file was created at actual storage location (backend saves to /workspace)
-    const actualPath = getActualFilePath(remotePath)
-    const fileInfo = await sandbox.files.stat(actualPath)
+    // Verify file was created at actual storage location
+    const fileInfo = await sandbox.files.stat(remotePath)
     expect(fileInfo.name).toBe('test-for-download.txt')
     expect(fileInfo.type).toBe('file')
     
@@ -183,9 +173,8 @@ describe('File Upload and Download', () => {
     
     expect(result.path).toBe(remotePath)
     
-    // Verify file exists at actual storage location (backend saves to /workspace)
-    const actualPath = getActualFilePath(remotePath)
-    const actualDir = path.dirname(actualPath)
+    // Verify file exists at actual storage location
+    const actualDir = path.dirname(remotePath)
     
     const actualFiles = await sandbox.files.list(actualDir)
     const nestedFile = actualFiles.find(file => file.name === 'test-nested.txt')
@@ -195,7 +184,7 @@ describe('File Upload and Download', () => {
     expect(nestedFile!.type).toBe('file')
     
     // Verify file properties via stat
-    const fileInfo = await sandbox.files.stat(actualPath)
+    const fileInfo = await sandbox.files.stat(remotePath)
     expect(fileInfo.name).toBe('test-nested.txt')
     expect(fileInfo.type).toBe('file')
     
@@ -242,9 +231,8 @@ describe('File Upload and Download', () => {
     // Upload large file
     await sandbox.uploadFile(largeFilePath, remotePath)
     
-    // Verify file exists at actual storage location (backend saves to /workspace)
-    const actualPath = getActualFilePath(remotePath)
-    const actualDir = path.dirname(actualPath)
+    // Verify file exists at actual storage location
+    const actualDir = path.dirname(remotePath)
     
     const actualFiles = await sandbox.files.list(actualDir)
     const largeFile = actualFiles.find(file => file.name === 'large-file.txt')

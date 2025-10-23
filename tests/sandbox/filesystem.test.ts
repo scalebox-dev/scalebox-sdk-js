@@ -7,14 +7,6 @@ import os from 'os'
 
 const timeout = 120_000 // 增加超时时间到2分钟
 
-// Backend saves uploaded files to /workspace with preserved directory structure
-const BACKEND_WORKSPACE_PREFIX = '/workspace'
-
-// Helper function to convert requested path to actual backend storage path
-function getActualFilePath(requestedPath: string): string {
-  return `${BACKEND_WORKSPACE_PREFIX}${requestedPath}`
-}
-
 // Health check function - with error handling
 async function waitForSandboxHealth(sandbox: Sandbox) {
   try {
@@ -60,11 +52,11 @@ describe('Filesystem Handlers', () => {
       await sandbox.files.write(testFilePath, testContent)
       
       // Get file information using stat
-      const fileInfo = await sandbox.files.stat(getActualFilePath(testFilePath))
+      const fileInfo = await sandbox.files.stat(testFilePath)
       
       expect(fileInfo.name).toBe('test-stat-file.txt')
       expect(fileInfo.type).toBe('file')
-      expect(fileInfo.path).toBe(getActualFilePath(testFilePath))
+      expect(fileInfo.path).toBe(testFilePath)
       expect(Number(fileInfo.size)).toBe(testContent.length)
       expect(fileInfo.modifiedAt).toBeInstanceOf(Date)
       expect(typeof fileInfo.mode).toBe('number')
@@ -113,7 +105,7 @@ describe('Filesystem Handlers', () => {
       await sandbox.files.write(targetPath, 'target content')
       
       // Create symlink (this might need to be done via process execution)
-      const processStream = sandbox.processes.start({ cmd: 'ln', args: ['-s', getActualFilePath(targetPath), getActualFilePath(symlinkPath)] })
+      const processStream = sandbox.processes.start({ cmd: 'ln', args: ['-s', targetPath, symlinkPath] })
       
       // Wait for process to complete
       for await (const event of processStream) {
@@ -123,11 +115,11 @@ describe('Filesystem Handlers', () => {
       }
       
       // Get symlink information
-      const symlinkInfo = await sandbox.files.stat(getActualFilePath(symlinkPath))
+      const symlinkInfo = await sandbox.files.stat(symlinkPath)
       
       expect(symlinkInfo.name).toBe('symlink-test')
       expect(symlinkInfo.type).toBe('file') // symlinks are typically reported as files
-      expect(symlinkInfo.path).toBe(getActualFilePath(symlinkPath))
+      expect(symlinkInfo.path).toBe(symlinkPath)
       expect(symlinkInfo.symlinkTarget).toBeDefined()
     }, timeout)
 
@@ -141,11 +133,11 @@ describe('Filesystem Handlers', () => {
       await sandbox.files.write(testFilePath, testContent)
       
       // Get file information with custom user
-      const fileInfo = await sandbox.files.stat(getActualFilePath(testFilePath), { user: 'root' })
+      const fileInfo = await sandbox.files.stat(testFilePath, { user: 'root' })
       
       expect(fileInfo.name).toBe('test-user-file.txt')
       expect(fileInfo.type).toBe('file')
-      expect(fileInfo.path).toBe(getActualFilePath(testFilePath))
+      expect(fileInfo.path).toBe(testFilePath)
     }, timeout)
 
     test('should use custom timeout', async () => {
@@ -158,11 +150,11 @@ describe('Filesystem Handlers', () => {
       await sandbox.files.write(testFilePath, testContent)
       
       // Get file information with custom timeout
-      const fileInfo = await sandbox.files.stat(getActualFilePath(testFilePath), { requestTimeoutMs: 10000 })
+      const fileInfo = await sandbox.files.stat(testFilePath, { requestTimeoutMs: 10000 })
       
       expect(fileInfo.name).toBe('test-timeout-file.txt')
       expect(fileInfo.type).toBe('file')
-      expect(fileInfo.path).toBe(getActualFilePath(testFilePath))
+      expect(fileInfo.path).toBe(testFilePath)
     }, timeout)
   })
 
@@ -294,17 +286,17 @@ describe('Filesystem Handlers', () => {
       await sandbox.files.write(sourcePath, testContent)
       
       // Move file
-      const result = await sandbox.files.move(getActualFilePath(sourcePath), getActualFilePath(destPath))
+      const result = await sandbox.files.move(sourcePath, destPath)
       
       expect(result.name).toBe('dest-moved-file.txt')
       expect(result.type).toBe('file')
-      expect(result.path).toBe(getActualFilePath(destPath))
+      expect(result.path).toBe(destPath)
       
       // Verify source file no longer exists
-      await expect(sandbox.files.stat(getActualFilePath(sourcePath))).rejects.toThrow()
+      await expect(sandbox.files.stat(sourcePath)).rejects.toThrow()
       
       // Verify destination file exists and has correct content
-      const destFileInfo = await sandbox.files.stat(getActualFilePath(destPath))
+      const destFileInfo = await sandbox.files.stat(destPath)
       expect(destFileInfo.name).toBe('dest-moved-file.txt')
       expect(destFileInfo.type).toBe('file')
       
@@ -325,17 +317,17 @@ describe('Filesystem Handlers', () => {
       await sandbox.files.write(testFilePath, testContent)
       
       // Move directory
-      const result = await sandbox.files.move(getActualFilePath(sourceDirPath), getActualFilePath(destDirPath))
+      const result = await sandbox.files.move(sourceDirPath, destDirPath)
       
       expect(result.name).toBe('dest-moved-dir')
       expect(result.type).toBe('directory')
-      expect(result.path).toBe(getActualFilePath(destDirPath))
+      expect(result.path).toBe(destDirPath)
       
       // Verify source directory no longer exists
-      await expect(sandbox.files.stat(getActualFilePath(sourceDirPath))).rejects.toThrow()
+      await expect(sandbox.files.stat(sourceDirPath)).rejects.toThrow()
       
       // Verify destination directory exists
-      const destDirInfo = await sandbox.files.stat(getActualFilePath(destDirPath))
+      const destDirInfo = await sandbox.files.stat(destDirPath)
       expect(destDirInfo.name).toBe('dest-moved-dir')
       expect(destDirInfo.type).toBe('directory')
       
@@ -351,7 +343,7 @@ describe('Filesystem Handlers', () => {
       
       await waitForSandboxHealth(sandbox)
       
-      await expect(sandbox.files.move(getActualFilePath(nonExistentPath), getActualFilePath(destPath))).rejects.toThrow()
+      await expect(sandbox.files.move(nonExistentPath, destPath)).rejects.toThrow()
     }, timeout)
 
     test('should handle destination already exists error', async () => {
@@ -367,15 +359,15 @@ describe('Filesystem Handlers', () => {
       await sandbox.files.write(destPath, destContent)
       
       // Try to move to existing destination (backend allows overwrite)
-      const result = await sandbox.files.move(getActualFilePath(sourcePath), getActualFilePath(destPath))
+      const result = await sandbox.files.move(sourcePath, destPath)
       
       // Verify move succeeded and content was overwritten
       expect(result.name).toBe('dest-existing.txt')
       expect(result.type).toBe('file')
-      expect(result.path).toBe(getActualFilePath(destPath))
+      expect(result.path).toBe(destPath)
       
       // Verify source file no longer exists
-      await expect(sandbox.files.stat(getActualFilePath(sourcePath))).rejects.toThrow()
+      await expect(sandbox.files.stat(sourcePath)).rejects.toThrow()
       
       // Verify destination file has new content
       const newDestContent = await sandbox.files.read(destPath)
@@ -393,11 +385,11 @@ describe('Filesystem Handlers', () => {
       await sandbox.files.write(sourcePath, testContent)
       
       // Move file with custom user
-      const result = await sandbox.files.move(getActualFilePath(sourcePath), getActualFilePath(destPath), { user: 'root' })
+      const result = await sandbox.files.move(sourcePath, destPath, { user: 'root' })
       
       expect(result.name).toBe('dest-user-file.txt')
       expect(result.type).toBe('file')
-      expect(result.path).toBe(getActualFilePath(destPath))
+      expect(result.path).toBe(destPath)
     }, timeout)
 
     test('should use custom timeout', async () => {
@@ -411,11 +403,11 @@ describe('Filesystem Handlers', () => {
       await sandbox.files.write(sourcePath, testContent)
       
       // Move file with custom timeout
-      const result = await sandbox.files.move(getActualFilePath(sourcePath), getActualFilePath(destPath), { requestTimeoutMs: 20000 })
+      const result = await sandbox.files.move(sourcePath, destPath, { requestTimeoutMs: 20000 })
       
       expect(result.name).toBe('dest-timeout-file.txt')
       expect(result.type).toBe('file')
-      expect(result.path).toBe(getActualFilePath(destPath))
+      expect(result.path).toBe(destPath)
     }, timeout)
 
     test('should move multiple files in sequence', async () => {
@@ -434,16 +426,16 @@ describe('Filesystem Handlers', () => {
       
       // Move all files
       for (const pair of filePairs) {
-        const result = await sandbox.files.move(getActualFilePath(pair.source), getActualFilePath(pair.dest))
+        const result = await sandbox.files.move(pair.source, pair.dest)
         expect(result.name).toBe(path.basename(pair.dest))
         expect(result.type).toBe('file')
-        expect(result.path).toBe(getActualFilePath(pair.dest))
+        expect(result.path).toBe(pair.dest)
         
         // Verify source no longer exists
-        await expect(sandbox.files.stat(getActualFilePath(pair.source))).rejects.toThrow()
+        await expect(sandbox.files.stat(pair.source)).rejects.toThrow()
         
         // Verify destination exists
-        const destInfo = await sandbox.files.stat(getActualFilePath(pair.dest))
+        const destInfo = await sandbox.files.stat(pair.dest)
         expect(destInfo.name).toBe(path.basename(pair.dest))
         expect(destInfo.type).toBe('file')
       }
@@ -460,13 +452,13 @@ describe('Filesystem Handlers', () => {
       await waitForSandboxHealth(sandbox)
       
       // Create test directory structure
-      await sandbox.files.makeDir(getActualFilePath(testDirPath))
+      await sandbox.files.makeDir(testDirPath)
       await sandbox.files.write(file1Path, 'Content 1')
       await sandbox.files.write(file2Path, 'Content 2')
-      await sandbox.files.makeDir(getActualFilePath(subDirPath))
+      await sandbox.files.makeDir(subDirPath)
       
       // List directory contents
-      const entries = await sandbox.files.list(getActualFilePath(testDirPath))
+      const entries = await sandbox.files.list(testDirPath)
       
       expect(entries).toHaveLength(3)
       
@@ -477,17 +469,17 @@ describe('Filesystem Handlers', () => {
       
       expect(file1).toBeDefined()
       expect(file1!.type).toBe('file')
-      expect(file1!.path).toBe(getActualFilePath(file1Path))
+      expect(file1!.path).toBe(file1Path)
       expect(Number(file1!.size)).toBeGreaterThan(0)
       expect(file1!.modifiedAt).toBeInstanceOf(Date)
       
       expect(file2).toBeDefined()
       expect(file2!.type).toBe('file')
-      expect(file2!.path).toBe(getActualFilePath(file2Path))
+      expect(file2!.path).toBe(file2Path)
       
       expect(subdir).toBeDefined()
       expect(subdir!.type).toBe('directory')
-      expect(subdir!.path).toBe(getActualFilePath(subDirPath))
+      expect(subdir!.path).toBe(subDirPath)
     }, timeout)
 
     test('should list directory contents recursively', async () => {
@@ -509,7 +501,7 @@ describe('Filesystem Handlers', () => {
       await sandbox.files.write(file3Path, 'Content 3')
       
       // List directory contents recursively
-      const entries = await sandbox.files.list(getActualFilePath(testDirPath), { recursive: true })
+      const entries = await sandbox.files.list(testDirPath, { recursive: true })
       
       expect(entries.length).toBeGreaterThanOrEqual(5) // At least 3 files + 2 directories
       
@@ -536,7 +528,7 @@ describe('Filesystem Handlers', () => {
       await sandbox.files.makeDir(emptyDirPath)
       
       // List empty directory
-      const entries = await sandbox.files.list((emptyDirPath))
+      const entries = await sandbox.files.list(emptyDirPath)
       
       expect(entries).toEqual([])
     }, timeout)
@@ -546,7 +538,7 @@ describe('Filesystem Handlers', () => {
       
       await waitForSandboxHealth(sandbox)
       
-      await expect(sandbox.files.list(getActualFilePath(nonExistentDir))).rejects.toThrow()
+      await expect(sandbox.files.list(nonExistentDir)).rejects.toThrow()
     }, timeout)
 
     test('should handle path is not a directory error', async () => {
@@ -558,7 +550,7 @@ describe('Filesystem Handlers', () => {
       await sandbox.files.write(filePath, 'Test content')
       
       // Try to list a file as directory
-      await expect(sandbox.files.list(getActualFilePath(filePath))).rejects.toThrow()
+      await expect(sandbox.files.list(filePath)).rejects.toThrow()
     }, timeout)
 
     test('should use custom user in request', async () => {
@@ -570,7 +562,7 @@ describe('Filesystem Handlers', () => {
       await sandbox.files.makeDir(testDirPath)
       
       // List directory with custom user
-      const entries = await sandbox.files.list((testDirPath), { user: 'root' })
+      const entries = await sandbox.files.list(testDirPath, { user: 'root' })
       
       expect(entries).toEqual([])
     }, timeout)
@@ -584,7 +576,7 @@ describe('Filesystem Handlers', () => {
       await sandbox.files.makeDir(testDirPath)
       
       // List directory with custom timeout
-      const entries = await sandbox.files.list((testDirPath), { requestTimeoutMs: 25000 })
+      const entries = await sandbox.files.list(testDirPath, { requestTimeoutMs: 25000 })
       
       expect(entries).toEqual([])
     }, timeout)
@@ -601,7 +593,7 @@ describe('Filesystem Handlers', () => {
       await sandbox.files.write(targetPath, 'Target content')
       
       // Create symlink (using process execution)
-      const processStream = sandbox.processes.start({ cmd: 'ln', args: ['-s', getActualFilePath(targetPath), (symlinkPath)] })
+      const processStream = sandbox.processes.start({ cmd: 'ln', args: ['-s', targetPath, symlinkPath] })
       
       // Wait for process to complete
       for await (const event of processStream) {
@@ -611,7 +603,7 @@ describe('Filesystem Handlers', () => {
       }
       
       // List directory contents
-      const entries = await sandbox.files.list((testDirPath))
+      const entries = await sandbox.files.list(testDirPath)
       
       const symlink = entries.find(entry => entry.name === 'symlink')
       expect(symlink).toBeDefined()
@@ -637,7 +629,7 @@ describe('Filesystem Handlers', () => {
       
       // List all directories
       for (const dirPath of dirPaths) {
-        const entries = await sandbox.files.list(getActualFilePath(dirPath))
+        const entries = await sandbox.files.list(dirPath)
         expect(entries).toHaveLength(1)
         expect(entries[0].name).toMatch(/^file\d+\.txt$/)
         expect(entries[0].type).toBe('file')
@@ -656,14 +648,14 @@ describe('Filesystem Handlers', () => {
       await sandbox.files.write(filePath, testContent)
       
       // Verify file exists
-      const fileInfo = await sandbox.files.stat(getActualFilePath(filePath))
+      const fileInfo = await sandbox.files.stat(filePath)
       expect(fileInfo.name).toBe('test-remove-file.txt')
       
       // Remove file
-      await sandbox.files.remove(getActualFilePath(filePath))
+      await sandbox.files.remove(filePath)
       
       // Verify file no longer exists
-      await expect(sandbox.files.stat(getActualFilePath(filePath))).rejects.toThrow()
+      await expect(sandbox.files.stat(filePath)).rejects.toThrow()
     }, timeout)
 
     test('should remove directory successfully', async () => {
@@ -678,18 +670,18 @@ describe('Filesystem Handlers', () => {
       await sandbox.files.write(filePath, testContent)
       
       // Verify directory and file exist
-      const dirInfo = await sandbox.files.stat(getActualFilePath(dirPath))
+      const dirInfo = await sandbox.files.stat(dirPath)
       expect(dirInfo.name).toBe('test-remove-dir')
       expect(dirInfo.type).toBe('directory')
       
-      const fileInfo = await sandbox.files.stat(getActualFilePath(filePath))
+      const fileInfo = await sandbox.files.stat(filePath)
       expect(fileInfo.name).toBe('test-file.txt')
       
       // Remove directory (should remove recursively)
-      await sandbox.files.remove(getActualFilePath(dirPath))
+      await sandbox.files.remove(dirPath)
       
       // Verify directory no longer exists
-      await expect(sandbox.files.stat(getActualFilePath(dirPath))).rejects.toThrow()
+      await expect(sandbox.files.stat(dirPath)).rejects.toThrow()
     }, timeout)
 
     test('should remove nested directory structure', async () => {
@@ -711,20 +703,20 @@ describe('Filesystem Handlers', () => {
       await sandbox.files.write(file3Path, 'Content 3')
       
       // Verify all files exist
-      expect(await sandbox.files.stat(getActualFilePath(file1Path))).toBeDefined()
-      expect(await sandbox.files.stat(getActualFilePath(file2Path))).toBeDefined()
-      expect(await sandbox.files.stat(getActualFilePath(file3Path))).toBeDefined()
+      expect(await sandbox.files.stat(file1Path)).toBeDefined()
+      expect(await sandbox.files.stat(file2Path)).toBeDefined()
+      expect(await sandbox.files.stat(file3Path)).toBeDefined()
       
       // Remove root directory (should remove everything recursively)
-      await sandbox.files.remove(getActualFilePath(rootDirPath))
+      await sandbox.files.remove(rootDirPath)
       
       // Verify all files and directories no longer exist
-      await expect(sandbox.files.stat(getActualFilePath(rootDirPath))).rejects.toThrow()
-      await expect(sandbox.files.stat(getActualFilePath(nestedDirPath))).rejects.toThrow()
-      await expect(sandbox.files.stat(getActualFilePath(deepDirPath))).rejects.toThrow()
-      await expect(sandbox.files.stat(getActualFilePath(file1Path))).rejects.toThrow()
-      await expect(sandbox.files.stat(getActualFilePath(file2Path))).rejects.toThrow()
-      await expect(sandbox.files.stat(getActualFilePath(file3Path))).rejects.toThrow()
+      await expect(sandbox.files.stat(rootDirPath)).rejects.toThrow()
+      await expect(sandbox.files.stat(nestedDirPath)).rejects.toThrow()
+      await expect(sandbox.files.stat(deepDirPath)).rejects.toThrow()
+      await expect(sandbox.files.stat(file1Path)).rejects.toThrow()
+      await expect(sandbox.files.stat(file2Path)).rejects.toThrow()
+      await expect(sandbox.files.stat(file3Path)).rejects.toThrow()
     }, timeout)
 
     test('should handle non-existent file error', async () => {
@@ -733,7 +725,7 @@ describe('Filesystem Handlers', () => {
       await waitForSandboxHealth(sandbox)
       
       // Try to remove non-existent file (backend allows this)
-      const result = await sandbox.files.remove(getActualFilePath(nonExistentPath))
+      const result = await sandbox.files.remove(nonExistentPath)
       expect(result).toBeUndefined()
     }, timeout)
 
@@ -1074,26 +1066,26 @@ describe('Filesystem Handlers', () => {
       await sandbox.files.write(filePath, testContent)
       
       // 4. Stat file (Stat)
-      const fileInfo = await sandbox.files.stat(getActualFilePath(filePath))
+      const fileInfo = await sandbox.files.stat(filePath)
       expect(fileInfo.name).toBe('test-file.txt')
       expect(fileInfo.type).toBe('file')
       expect(Number(fileInfo.size)).toBe(testContent.length)
       
       // 5. List directory (should contain file)
-      entries = await sandbox.files.list(getActualFilePath(baseDir))
+      entries = await sandbox.files.list(baseDir)
       expect(entries).toHaveLength(1)
       expect(entries[0].name).toBe('test-file.txt')
       
       // 6. Move file (Move)
-      const moveResult = await sandbox.files.move(getActualFilePath(filePath), getActualFilePath(movedFilePath))
+      const moveResult = await sandbox.files.move(filePath, movedFilePath)
       expect(moveResult.name).toBe('moved-file.txt')
-      expect(moveResult.path).toBe(getActualFilePath(movedFilePath))
+      expect(moveResult.path).toBe(movedFilePath)
       
       // 7. Verify original file no longer exists
-      await expect(sandbox.files.stat(getActualFilePath(filePath))).rejects.toThrow()
+      await expect(sandbox.files.stat(filePath)).rejects.toThrow()
       
       // 8. Verify moved file exists
-      const movedFileInfo = await sandbox.files.stat(getActualFilePath(movedFilePath))
+      const movedFileInfo = await sandbox.files.stat(movedFilePath)
       expect(movedFileInfo.name).toBe('moved-file.txt')
       
       // 9. Read moved file content
@@ -1133,24 +1125,24 @@ describe('Filesystem Handlers', () => {
       await sandbox.files.write(file3Path, 'Content 3')
       
       // 5. List base directory
-      const baseEntries = await sandbox.files.list(getActualFilePath(baseDir))
+      const baseEntries = await sandbox.files.list(baseDir)
       expect(baseEntries).toHaveLength(2) // file1.txt and nested directory
       
       // 6. List nested directory
-      const nestedEntries = await sandbox.files.list(getActualFilePath(nestedDir))
+      const nestedEntries = await sandbox.files.list(nestedDir)
       expect(nestedEntries).toHaveLength(2) // file2.txt and file3.txt
       
       // 7. List recursively
-      const allEntries = await sandbox.files.list(getActualFilePath(baseDir), { recursive: true })
+      const allEntries = await sandbox.files.list(baseDir, { recursive: true })
       expect(allEntries.length).toBeGreaterThanOrEqual(4) // At least 3 files + 1 directory
       
       // 8. Move file within nested directory
       const movedFile2Path = '/tmp/complex-integration-test/nested/moved-file2.txt'
-      await sandbox.files.move(getActualFilePath(file2Path), getActualFilePath(movedFile2Path))
+      await sandbox.files.move(file2Path, movedFile2Path)
       
       // 9. Verify move worked
-      await expect(sandbox.files.stat(getActualFilePath(file2Path))).rejects.toThrow()
-      const movedFileInfo = await sandbox.files.stat(getActualFilePath(movedFile2Path))
+      await expect(sandbox.files.stat(file2Path)).rejects.toThrow()
+      const movedFileInfo = await sandbox.files.stat(movedFile2Path)
       expect(movedFileInfo.name).toBe('moved-file2.txt')
       
       // 10. Get watcher events (skip for watchStream as it's async iterator)
@@ -1189,7 +1181,7 @@ describe('Filesystem Handlers', () => {
       
       // 3. Stat all files concurrently
       const statPromises = filePaths.map(filePath => 
-        sandbox.files.stat(getActualFilePath(filePath))
+        sandbox.files.stat(filePath)
       )
       const fileInfos = await Promise.all(statPromises)
       
@@ -1200,18 +1192,18 @@ describe('Filesystem Handlers', () => {
       })
       
       // 4. List directory
-      const entries = await sandbox.files.list(getActualFilePath(baseDir))
+      const entries = await sandbox.files.list(baseDir)
       expect(entries).toHaveLength(3)
       
       // 5. Remove all files concurrently
       const removePromises = filePaths.map(filePath => 
-        sandbox.files.remove(getActualFilePath(filePath))
+        sandbox.files.remove(filePath)
       )
       await Promise.all(removePromises)
       
       // 6. Verify all files are removed
       const statAfterRemovePromises = filePaths.map(filePath => 
-        sandbox.files.stat(getActualFilePath(filePath)).catch(() => null)
+        sandbox.files.stat(filePath).catch(() => null)
       )
       const results = await Promise.all(statAfterRemovePromises)
       results.forEach(result => expect(result).toBeNull())
@@ -1234,7 +1226,7 @@ describe('Filesystem Handlers', () => {
       await sandbox.files.write(filePath, testContent)
       
       // 3. Verify file exists
-      const fileInfo = await sandbox.files.stat(getActualFilePath(filePath))
+      const fileInfo = await sandbox.files.stat(filePath)
       expect(fileInfo.name).toBe('test-file.txt')
       
       // 4. Try to create directory that already exists (should fail)
@@ -1247,7 +1239,7 @@ describe('Filesystem Handlers', () => {
       await expect(sandbox.files.move(filePath, '/nonexistent/path/file.txt')).rejects.toThrow()
       
       // 7. Verify original file still exists
-      const stillExistsInfo = await sandbox.files.stat(getActualFilePath(filePath))
+      const stillExistsInfo = await sandbox.files.stat(filePath)
       expect(stillExistsInfo.name).toBe('test-file.txt')
       
       // 8. Clean up
@@ -1271,16 +1263,16 @@ describe('Filesystem Handlers', () => {
       await sandbox.files.write(largeFilePath, largeContent)
       
       // 3. Stat large file
-      const fileInfo = await sandbox.files.stat(getActualFilePath(largeFilePath))
+      const fileInfo = await sandbox.files.stat(largeFilePath)
       expect(fileInfo.name).toBe('large-file.txt')
       expect(Number(fileInfo.size)).toBe(largeContent.length)
       
       // 4. Move large file
-      await sandbox.files.move(getActualFilePath(largeFilePath), getActualFilePath(movedLargeFilePath))
+      await sandbox.files.move(largeFilePath, movedLargeFilePath)
       
       // 5. Verify move worked
-      await expect(sandbox.files.stat(getActualFilePath(largeFilePath))).rejects.toThrow()
-      const movedFileInfo = await sandbox.files.stat(getActualFilePath(movedLargeFilePath))
+      await expect(sandbox.files.stat(largeFilePath)).rejects.toThrow()
+      const movedFileInfo = await sandbox.files.stat(movedLargeFilePath)
       expect(movedFileInfo.name).toBe('moved-large-file.txt')
       
       // 6. Read large file content (check first and last parts)
