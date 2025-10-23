@@ -138,15 +138,22 @@ describe('Sandbox Lifecycle Management', () => {
       expect(typeof isRunning).toBe('boolean')
     })
 
-    // NOTE: This test is skipped because the backend implementation is not yet available.
-    // It should be enabled once the backend supports sandbox connection functionality.
-    it.skip('should connect to existing sandbox', async () => {
+    it('should connect to existing sandbox', async () => {
       console.log('🔌 Connecting to existing sandbox...')
       
       const connectedSandbox = await Sandbox.connect(testSandbox.sandboxId)
       
       expect(connectedSandbox.sandboxId).toBe(testSandbox.sandboxId)
+      expect(connectedSandbox.sandboxDomain).toBeDefined()
+      expect(connectedSandbox.envdAccessToken).toBeDefined()
+      
+      // Verify the connected sandbox is functional
+      const isRunning = await connectedSandbox.isRunning()
+      expect(isRunning).toBe(true)
+      
       console.log(`✅ Connection successful: ${connectedSandbox.sandboxId}`)
+      console.log(`   Domain: ${connectedSandbox.sandboxDomain}`)
+      console.log(`   Status: running`)
     })
   })
 

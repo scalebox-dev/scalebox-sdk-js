@@ -320,7 +320,6 @@ export class SandboxApi {
       // 直接返回统一的SandboxInfo结构
       const sandboxInfo = await client.getSandbox(sandboxId)
       
-      // 添加sandboxDomain信息
       return {
         ...sandboxInfo,
       }

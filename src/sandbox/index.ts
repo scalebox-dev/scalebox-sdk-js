@@ -205,10 +205,10 @@ export class Sandbox {
     })
     if (config.debug) {
       return new this({
+        ...sandboxOpts,
         sandboxId: 'debug_sandbox_id',
         sandboxDomain: 'debug.scalebox.dev',
         envdAccessToken: 'debug_token',
-        ...config,
       }) as InstanceType<S>
     }
 
@@ -221,15 +221,10 @@ export class Sandbox {
     // SandboxApi.createSandbox validates and ensures these fields exist
     // The API will throw an error if sandboxDomain or envdAccessToken is missing
     const instance = new this({ 
+      ...sandboxOpts,
       sandboxId: sandbox.sandboxId,
       sandboxDomain: sandbox.sandboxDomain as string,
       envdAccessToken: sandbox.envdAccessToken as string,
-      apiKey: config.apiKey,
-      apiUrl: config.apiUrl,
-      debug: config.debug,
-      domain: config.domain,
-      requestTimeoutMs: config.requestTimeoutMs,
-      headers: config.headers
     }) as InstanceType<S>
 
     // Perform health check to ensure sandbox domain is accessible via ingress
@@ -298,21 +293,12 @@ export class Sandbox {
       throw new ScaleboxError(`Failed to connect to sandbox ${sandboxId}: envdAccessToken not available`)
     }
 
-    const config = new ConnectionConfig({
-      apiKey: opts?.apiKey,
-      apiUrl: opts?.apiUrl,
-      debug: opts?.debug,
-      domain: opts?.domain,
-      requestTimeoutMs: opts?.requestTimeoutMs,
-      headers: opts?.headers
-    })
-
     return new this({
+      ...opts,
       sandboxId,
       sandboxDomain: info.sandboxDomain,
       envdAccessToken: info.envdAccessToken,
       envs: info.envs,
-      ...config,
     }) as InstanceType<S>
   }
 
