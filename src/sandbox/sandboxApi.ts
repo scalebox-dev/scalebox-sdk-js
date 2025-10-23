@@ -298,6 +298,17 @@ export class SandboxApi {
     })
     const client = new ApiClient(config, sandboxId)
 
+    // Validate timeout before making API call
+    const timeoutSeconds = Math.floor(timeoutMs / 1000)
+    
+    if (timeoutSeconds < 60) {
+      throw new ScaleboxError(`Timeout must be at least 60 seconds (${timeoutSeconds}s provided, from ${timeoutMs}ms)`)
+    }
+    
+    if (timeoutSeconds > 3600) {
+      throw new ScaleboxError(`Timeout cannot exceed 3600 seconds (${timeoutSeconds}s provided, from ${timeoutMs}ms)`)
+    }
+
     try {
       await client.updateSandboxTimeout(sandboxId, timeoutMs)
     } catch (error) {
