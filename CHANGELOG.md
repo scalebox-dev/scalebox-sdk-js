@@ -1,3 +1,15 @@
+# [2.3.0](https://github.com/scalebox-dev/scalebox-sdk-js/compare/v2.2.0...v2.3.0) (2025-10-23)
+
+
+### Bug Fixes
+
+* implement Sandbox.connect() with proper parameter spreading ([9b861df](https://github.com/scalebox-dev/scalebox-sdk-js/commit/9b861df366469554dadf9f9152817fa348636c48))
+
+
+### Features
+
+* **tests:** add comprehensive sandbox connect test suite ([b27d50b](https://github.com/scalebox-dev/scalebox-sdk-js/commit/b27d50b7227168af3e3ca7c761b849c848a0455c))
+
 # [2.2.0](https://github.com/scalebox-dev/scalebox-sdk-js/compare/v2.1.0...v2.2.0) (2025-10-22)
 
 
