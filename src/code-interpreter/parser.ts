@@ -384,7 +384,20 @@ export function deserializeChart(data?: any): ChartTypes | undefined {
  * Convert Execution object to ExecutionResult
  */
 export function executionToResult(execution: Execution, language: string, context?: any): ExecutionResult {
-  const mainResult = execution.results.find(r => r.isMainResult)
+  // Find main result with intelligent fallback:
+  // 1. First try to find result explicitly marked as main
+  // 2. If none, use first result with media content (png/svg/html/jpeg)
+  //    This handles the case where backend doesn't mark display_data as main
+  // Note: We don't fallback for text/markdown/json to preserve existing behavior
+  let mainResult = execution.results.find(r => r.isMainResult)
+  
+  if (!mainResult && execution.results.length > 0) {
+    // Fallback ONLY for media content (images, graphics, HTML)
+    // This is to fix the issue where display_data (e.g., from IPython.display.Image)
+    // is not marked as isMainResult by the backend
+    mainResult = execution.results.find(r => r.png || r.svg || r.html || r.jpeg)
+  }
+  
   const hasError = execution.error !== undefined
   
   return {
@@ -392,7 +405,11 @@ export function executionToResult(execution: Execution, language: string, contex
     stderr: execution.logs.stderr.join(''),
     exitCode: hasError ? 1 : 0,
     error: execution.error,
+    // Populate top-level convenience fields from main result
     text: mainResult?.text || execution.logs.stdout.join(''),
+    png: mainResult?.png,
+    svg: mainResult?.svg,
+    html: mainResult?.html,
     logs: {
       stdout: execution.logs.stdout.join(''),
       stderr: execution.logs.stderr.join(''),
