@@ -1,3 +1,10 @@
+## [2.3.1](https://github.com/scalebox-dev/scalebox-sdk-js/compare/v2.3.0...v2.3.1) (2025-10-24)
+
+
+### Bug Fixes
+
+* populate top-level media fields (png/svg/html) in ExecutionResult ([ccc5803](https://github.com/scalebox-dev/scalebox-sdk-js/commit/ccc5803fc0fb8c79d72f097038ee19eacad8d49f))
+
 # [2.3.0](https://github.com/scalebox-dev/scalebox-sdk-js/compare/v2.2.0...v2.3.0) (2025-10-23)
 
 
