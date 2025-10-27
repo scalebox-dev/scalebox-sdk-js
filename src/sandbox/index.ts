@@ -252,6 +252,7 @@ export class Sandbox {
    *
    * @param sandboxId sandbox ID.
    * @param opts connection options.
+   * @param opts.timeoutMs - Optional timeout in milliseconds. If not provided, the existing sandbox timeout will be preserved.
    *
    * @returns A running sandbox instance
    *
@@ -260,8 +261,11 @@ export class Sandbox {
    * const sandbox = await Sandbox.create()
    * const sandboxId = sandbox.sandboxId
    *
-   * // Connect to the same sandbox.
+   * // Connect to the same sandbox (preserves existing timeout).
    * const sameSandbox = await Sandbox.connect(sandboxId)
+   * 
+   * // Connect with extended timeout
+   * const extendedSandbox = await Sandbox.connect(sandboxId, { timeoutMs: 600000 })
    * ```
    */
   static async connect<S extends typeof Sandbox>(
@@ -270,14 +274,23 @@ export class Sandbox {
     opts?: SandboxConnectOpts
   ): Promise<InstanceType<S>> {
     try {
-      await SandboxApi.setTimeout(
-        sandboxId,
-        opts?.timeoutMs || DEFAULT_SANDBOX_TIMEOUT_MS,
-        opts
-      )
+      // 只在明确传入 timeoutMs 时才更新 timeout，避免意外重置
+      if (opts?.timeoutMs !== undefined) {
+        await SandboxApi.setTimeout(
+          sandboxId,
+          opts.timeoutMs,
+          opts
+        )
+      }
+      // 如果未传入 timeoutMs，保持现有 timeout 不变
     } catch (e) {
       if (e instanceof SandboxError) {
-        await SandboxApi.resumeSandbox(sandboxId, opts)
+        // 暂停的沙盒需要恢复：传入 timeout 避免恢复后立即超时
+        const resumeOpts = {
+          ...opts,
+          timeoutMs: opts?.timeoutMs ?? DEFAULT_SANDBOX_TIMEOUT_MS
+        }
+        await SandboxApi.resumeSandbox(sandboxId, resumeOpts)
       } else {
         throw e
       }
@@ -309,6 +322,7 @@ export class Sandbox {
    * With sandbox ID you can connect to the same sandbox from different places or environments (serverless functions, etc).
    *
    * @param opts connection options.
+   * @param opts.timeoutMs - Optional timeout in milliseconds. If not provided, the existing sandbox timeout will be preserved.
    *
    * @returns A running sandbox instance
    *
@@ -317,19 +331,31 @@ export class Sandbox {
    * const sandbox = await Sandbox.create()
    * await sandbox.betaPause()
    *
-   * // Connect to the same sandbox.
+   * // Connect to the same sandbox (preserves existing timeout).
    * const sameSandbox = await sandbox.connect()
+   * 
+   * // Connect with extended timeout
+   * await sandbox.connect({ timeoutMs: 600000 })
    * ```
    */
   async connect(opts?: SandboxOpts): Promise<this> {
     try {
-      await SandboxApi.setTimeout(
-        this.sandboxId,
-        opts?.timeoutMs || DEFAULT_SANDBOX_TIMEOUT_MS,
-        opts
-      )
+      // 只在明确传入 timeoutMs 时才更新 timeout，避免意外重置
+      if (opts?.timeoutMs !== undefined) {
+        await SandboxApi.setTimeout(
+          this.sandboxId,
+          opts.timeoutMs,
+          opts
+        )
+      }
+      // 如果未传入 timeoutMs，保持现有 timeout 不变
     } catch (e) {
-      await SandboxApi.resumeSandbox(this.sandboxId, opts)
+      // 暂停的沙盒需要恢复：传入 timeout 避免恢复后立即超时
+      const resumeOpts = {
+        ...opts,
+        timeoutMs: opts?.timeoutMs ?? DEFAULT_SANDBOX_TIMEOUT_MS
+      }
+      await SandboxApi.resumeSandbox(this.sandboxId, resumeOpts)
     }
 
     return this

@@ -441,8 +441,11 @@ export class SandboxApi {
     })
     const client = new ApiClient(config, sandboxId)
 
+    // 恢复时需要传入 timeout，避免因暂停时间过长导致恢复后立即超时
+    const timeoutMs = opts?.timeoutMs ?? DEFAULT_SANDBOX_TIMEOUT_MS
+
     try {
-      await client.resumeSandbox(sandboxId)
+      await client.resumeSandbox(sandboxId, timeoutMs)
       return true
     } catch (error) {
       if (error instanceof NotFoundError) {

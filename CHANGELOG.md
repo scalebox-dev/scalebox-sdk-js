@@ -96,6 +96,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Fixed
+- **[CRITICAL]** Fixed timeout reset bug in `Sandbox.connect()` method
+  - Previously, calling `Sandbox.connect(sandboxId)` without `timeoutMs` parameter would reset the sandbox timeout to the default 5 minutes
+  - This caused customer-reported issue where a 30-minute sandbox was reset to 5 minutes after reconnection
+  - Now, `connect()` only updates timeout when `timeoutMs` is explicitly provided, preserving the existing timeout otherwise
+  - **Pause/Resume Safety**: When resuming a paused sandbox, a new timeout is automatically set to prevent immediate timeout after long pause periods
+  - Added comprehensive test suite (`timeout-preservation.test.ts`) to verify the fix
+  - **Breaking Change**: If you relied on `connect()` resetting timeout to 5 minutes, you must now explicitly pass `{ timeoutMs: 300000 }`
+
+### Changed
+- **Enhanced** `resumeSandbox()` method to accept `timeoutMs` parameter
+  - When resuming a paused sandbox, a new timeout is set (default 5 minutes) to ensure the sandbox has adequate running time
+  - This prevents the issue where a sandbox paused for a long time would immediately timeout after resuming
+  - Similar to E2B's behavior, but with better handling of normal reconnection scenarios
+
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 

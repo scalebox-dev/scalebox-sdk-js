@@ -573,10 +573,14 @@ export class ApiClient {
 
   /**
    * 恢复沙箱
+   * @param sandboxId 沙箱 ID
+   * @param timeoutMs 恢复后的超时时间（毫秒），避免因暂停时间过长导致立即超时
    */
-  async resumeSandbox(sandboxId: string): Promise<void> {
+  async resumeSandbox(sandboxId: string, timeoutMs: number): Promise<void> {
+    const timeoutSeconds = Math.floor(timeoutMs / 1000) // Convert ms to seconds
     const response = await this.client.POST('/v1/sandboxes/{sandbox_id}/resume' as any, {
-      params: { path: { sandbox_id: sandboxId } }
+      params: { path: { sandbox_id: sandboxId } },
+      body: { timeout: timeoutSeconds }
     })
 
     if (response.error) {
