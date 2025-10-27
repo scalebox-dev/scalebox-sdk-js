@@ -1,3 +1,16 @@
+# [3.0.0](https://github.com/scalebox-dev/scalebox-sdk-js/compare/v2.3.1...v3.0.0) (2025-10-27)
+
+
+### Bug Fixes
+
+* **sandbox:** 修复 connect() 重置 timeout 的关键 bug ([eda5340](https://github.com/scalebox-dev/scalebox-sdk-js/commit/eda5340349d91ffe3ceceea3bc7ce20c78edc639))
+* 添加 DEFAULT_SANDBOX_TIMEOUT_MS 导入 ([f45f2b2](https://github.com/scalebox-dev/scalebox-sdk-js/commit/f45f2b2617af191c642be9f890c50b8cb5c4983a))
+
+
+### BREAKING CHANGES
+
+* **sandbox:** resumeSandbox() 现在需要传入 timeoutMs 参数
+
 ## [2.3.1](https://github.com/scalebox-dev/scalebox-sdk-js/compare/v2.3.0...v2.3.1) (2025-10-24)
 
 
