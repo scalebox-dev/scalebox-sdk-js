@@ -1,5 +1,5 @@
 import { ApiClient } from '../api'
-import { ConnectionConfig } from '../connectionConfig'
+import { ConnectionConfig, DEFAULT_SANDBOX_TIMEOUT_MS } from '../connectionConfig'
 import { ScaleboxError, SandboxError, NotFoundError } from '../errors'
 import type { SandboxInfo } from './types'
 
