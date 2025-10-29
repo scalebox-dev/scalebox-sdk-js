@@ -181,7 +181,8 @@ export class ProcessManager {
           envs: proc.config.envs || {},
           cwd: proc.config.cwd
         },
-        pid: proc.pid,
+        // Convert BigInt to number for JSON serialization compatibility
+        pid: typeof proc.pid === 'bigint' ? Number(proc.pid) : proc.pid,
         tag: proc.tag
       }))
 
@@ -245,7 +246,8 @@ export class ProcessManager {
           if (eventCase === 'start') {
             yield {
               type: 'start',
-              data: { pid: value.pid }
+              // Convert BigInt to number for JSON serialization compatibility
+              data: { pid: typeof value.pid === 'bigint' ? Number(value.pid) : value.pid }
             }
           } else if (eventCase === 'data') {
             const outputData: any = {}
@@ -336,7 +338,8 @@ export class ProcessManager {
           if (eventCase === 'start') {
             yield {
               type: 'start',
-              data: { pid: value.pid }
+              // Convert BigInt to number for JSON serialization compatibility
+              data: { pid: typeof value.pid === 'bigint' ? Number(value.pid) : value.pid }
             }
           } else if (eventCase === 'data') {
             const outputData: any = {}
