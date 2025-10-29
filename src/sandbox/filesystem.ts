@@ -440,9 +440,11 @@ export class Filesystem {
         name: entry.name,
         type: this.mapFileType(entry.type),
         path: entry.path,
-        size: entry.size,
+        // Convert BigInt to number for JSON serialization compatibility
+        size: typeof entry.size === 'bigint' ? Number(entry.size) : entry.size,
         modifiedAt: new Date(entry.modifiedTime?.seconds ? Number(entry.modifiedTime.seconds) * 1000 : Date.now()),
-        mode: entry.mode,
+        // Convert BigInt to number for mode field as well
+        mode: typeof entry.mode === 'bigint' ? Number(entry.mode) : entry.mode,
         permissions: entry.permissions,
         owner: entry.owner,
         group: entry.group,
@@ -606,9 +608,11 @@ export class Filesystem {
         name: response.entry.name,
         type: this.mapFileType(response.entry.type),
         path: response.entry.path,
-        size: response.entry.size,
+        // Convert BigInt to number for JSON serialization compatibility
+        size: typeof response.entry.size === 'bigint' ? Number(response.entry.size) : response.entry.size,
         modifiedAt: new Date(response.entry.modifiedTime?.seconds ? Number(response.entry.modifiedTime.seconds) * 1000 : Date.now()),
-        mode: response.entry.mode,
+        // Convert BigInt to number for mode field as well
+        mode: typeof response.entry.mode === 'bigint' ? Number(response.entry.mode) : response.entry.mode,
         permissions: response.entry.permissions,
         owner: response.entry.owner,
         group: response.entry.group,
