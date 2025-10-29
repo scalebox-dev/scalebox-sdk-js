@@ -1235,15 +1235,22 @@ describe('Filesystem Handlers', () => {
       // 5. Try to stat non-existent file (should fail)
       await expect(sandbox.files.stat('/tmp/does-not-exist.txt')).rejects.toThrow()
       
-      // 6. Try to move to non-existent destination (should fail)
-      await expect(sandbox.files.move(filePath, '/nonexistent/path/file.txt')).rejects.toThrow()
+      // 6. Move to non-existent destination path (backend auto-creates parent directories)
+      const newPath = '/tmp/auto-created-dir/moved-file.txt'
+      const movedInfo = await sandbox.files.move(filePath, newPath)
+      expect(movedInfo.name).toBe('moved-file.txt')
+      expect(movedInfo.path).toBe(newPath)
       
-      // 7. Verify original file still exists
-      const stillExistsInfo = await sandbox.files.stat(filePath)
-      expect(stillExistsInfo.name).toBe('test-file.txt')
+      // 7. Verify original file no longer exists
+      await expect(sandbox.files.stat(filePath)).rejects.toThrow()
       
-      // 8. Clean up
+      // 8. Verify file exists at new location
+      const newFileInfo = await sandbox.files.stat(newPath)
+      expect(newFileInfo.name).toBe('moved-file.txt')
+      
+      // 9. Clean up
       await sandbox.files.remove(baseDir)
+      await sandbox.files.remove('/tmp/auto-created-dir')
     }, timeout)
 
     test('should handle large file operations', async () => {
