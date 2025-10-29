@@ -1,3 +1,10 @@
+## [3.1.2](https://github.com/scalebox-dev/scalebox-sdk-js/compare/v3.1.1...v3.1.2) (2025-10-29)
+
+
+### Bug Fixes
+
+* **process:** convert BigInt to number for pid fields ([878afea](https://github.com/scalebox-dev/scalebox-sdk-js/commit/878afead68c585728d6a6887bedffdd94a52459f))
+
 ## [3.1.1](https://github.com/scalebox-dev/scalebox-sdk-js/compare/v3.1.0...v3.1.1) (2025-10-29)
 
 
