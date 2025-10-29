@@ -220,8 +220,8 @@ describe('File Upload and Download', () => {
     // Health check before file operations
     await waitForSandboxHealth(sandbox)
     
-    // Create a larger test file (1MB)
-    const largeContent = 'A'.repeat(1024 * 1024) // 1MB of 'A' characters
+    // Create a larger test file (10MB)
+    const largeContent = 'A'.repeat(10 * 1024 * 1024) // 10MB of 'A' characters
     const largeFilePath = path.join(tempDir, 'large-file.txt')
     const downloadLargePath = path.join(tempDir, 'large-downloaded.txt')
     const remotePath = '/tmp/large-file.txt'
@@ -252,7 +252,7 @@ describe('File Upload and Download', () => {
     expect(downloadedContent.substring(0, 100)).toBe('A'.repeat(100))
     expect(downloadedContent.substring(downloadedContent.length - 100)).toBe('A'.repeat(100))
     expect(downloadedContent.length).toBe(largeContent.length)
-  }, timeout * 2) // Double timeout for large file
+  }, timeout * 3) // Triple timeout for 10MB file
 
   test('should throw error for non-existent local file upload', async () => {
     const nonExistentPath = path.join(tempDir, 'does-not-exist.txt')
