@@ -1,3 +1,10 @@
+# [3.1.0](https://github.com/scalebox-dev/scalebox-sdk-js/compare/v3.0.0...v3.1.0) (2025-10-29)
+
+
+### Features
+
+* **sandbox:** improve isRunning with direct health check ([4e06e5d](https://github.com/scalebox-dev/scalebox-sdk-js/commit/4e06e5d0e51c7fbfebdde6ce22285369e00604d2))
+
 # [3.0.0](https://github.com/scalebox-dev/scalebox-sdk-js/compare/v2.3.1...v3.0.0) (2025-10-27)
 
 
