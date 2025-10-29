@@ -349,29 +349,8 @@ export class Filesystem {
       } else if (data instanceof ArrayBuffer) {
         blob = new Blob([data])
       } else if (data instanceof ReadableStream) {
-        // Convert ReadableStream to ArrayBuffer first
-        const reader = data.getReader()
-        const chunks: Uint8Array[] = []
-        let done = false
-        
-        while (!done) {
-          const { value, done: readerDone } = await reader.read()
-          done = readerDone
-          if (value) {
-            chunks.push(value)
-          }
-        }
-        
-        const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0)
-        const result = new Uint8Array(totalLength)
-        let offset = 0
-        
-        for (const chunk of chunks) {
-          result.set(chunk, offset)
-          offset += chunk.length
-        }
-        
-        blob = new Blob([result])
+        // Use native Response API for efficient stream to blob conversion
+        blob = await new Response(data).blob()
       } else {
         blob = data as Blob
       }
