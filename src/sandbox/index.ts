@@ -387,9 +387,17 @@ export class Sandbox {
   }
 
   /**
-   * Check if the sandbox is running.
+   * Check if the sandbox is running by performing a direct health check.
+   * 
+   * This method directly probes the sandbox agent's health endpoint,
+   * providing real-time and accurate status information. It automatically
+   * handles various failure scenarios including:
+   * - Sandbox timeout/expiration
+   * - Network connectivity issues
+   * - Sandbox crashes or failures
    *
-   * @returns `true` if the sandbox is running, `false` otherwise.
+   * @param opts connection options including request timeout
+   * @returns `true` if the sandbox is running and responsive, `false` otherwise.
    *
    * @example
    * ```ts
@@ -398,15 +406,68 @@ export class Sandbox {
    *
    * await sandbox.kill()
    * await sandbox.isRunning() // Returns false
+   * 
+   * // Custom timeout
+   * await sandbox.isRunning({ requestTimeoutMs: 10000 })
    * ```
    */
   async isRunning(
     opts?: Pick<ConnectionOpts, 'requestTimeoutMs'>
   ): Promise<boolean> {
+    // If sandbox domain is not available, fall back to API-based status check
+    if (!this.sandboxDomain) {
+      try {
+        const info = await this.getInfo()
+        return info.status === 'running'
+      } catch {
+        return false
+      }
+    }
+
     try {
-      const info = await this.getInfo()
-      return info.status === 'running'
+      // Direct health check approach for real-time accuracy
+      // This probes the sandbox directly rather than relying on database state
+      const timeoutMs = opts?.requestTimeoutMs || 5000
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+
+      try {
+        const healthUrl = `https://${this.sandboxDomain}/health`
+        
+        // Build request headers (auth is optional, similar to waitForHealth)
+        const requestHeaders: Record<string, string> = {}
+        if (this.envdAccessToken) {
+          requestHeaders['X-Access-Token'] = this.envdAccessToken
+        }
+
+        const response = await fetch(healthUrl, {
+          method: 'GET',
+          signal: controller.signal,
+          headers: requestHeaders
+        })
+
+        clearTimeout(timeoutId)
+        
+        // 502 Bad Gateway means sandbox is not reachable (nginx upstream unavailable)
+        if (response.status === 502) {
+          return false
+        }
+
+        // Any 2xx response means sandbox is healthy and running
+        return response.ok
+      } catch (error: any) {
+        clearTimeout(timeoutId)
+        
+        // Network errors, timeouts, or aborts mean sandbox is not running
+        if (error.name === 'AbortError' || error.name === 'TimeoutError') {
+          return false
+        }
+        
+        // Other fetch errors (network issues, DNS failures, etc.)
+        return false
+      }
     } catch {
+      // Fallback: any unexpected error means sandbox is not running
       return false
     }
   }
