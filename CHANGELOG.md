@@ -1,3 +1,10 @@
+## [3.1.1](https://github.com/scalebox-dev/scalebox-sdk-js/compare/v3.1.0...v3.1.1) (2025-10-29)
+
+
+### Bug Fixes
+
+* **filesystem:** convert BigInt to number for JSON serialization ([e1a76a8](https://github.com/scalebox-dev/scalebox-sdk-js/commit/e1a76a811e08fbfd5d6f6722865804db02716d87))
+
 # [3.1.0](https://github.com/scalebox-dev/scalebox-sdk-js/compare/v3.0.0...v3.1.0) (2025-10-29)
 
 
