@@ -635,6 +635,46 @@ describe('Filesystem Handlers', () => {
         expect(entries[0].type).toBe('file')
       }
     }, timeout)
+
+    test('should serialize list results to JSON without BigInt errors', async () => {
+      const testDirPath = '/tmp/test-json-serialization'
+      const file1Path = '/tmp/test-json-serialization/file1.txt'
+      const file2Path = '/tmp/test-json-serialization/file2.txt'
+      
+      await waitForSandboxHealth(sandbox)
+      
+      // Create test directory and files
+      await sandbox.files.makeDir(testDirPath)
+      await sandbox.files.write(file1Path, 'Content 1')
+      await sandbox.files.write(file2Path, 'Content 2')
+      
+      // List directory contents
+      const entries = await sandbox.files.list(testDirPath)
+      
+      // Test JSON serialization - this should NOT throw BigInt error
+      expect(() => JSON.stringify(entries)).not.toThrow()
+      
+      // Verify serialization produces valid JSON
+      const json = JSON.stringify(entries)
+      expect(json).toBeDefined()
+      expect(json.length).toBeGreaterThan(0)
+      
+      // Verify deserialization works
+      const parsed = JSON.parse(json)
+      expect(parsed).toHaveLength(2)
+      
+      // Verify all fields are properly converted (not BigInt)
+      for (const entry of entries) {
+        expect(typeof entry.size).toBe('number')
+        expect(typeof entry.mode).toBe('number')
+      }
+      
+      // Also test stat() method serialization
+      const statInfo = await sandbox.files.stat(file1Path)
+      expect(() => JSON.stringify(statInfo)).not.toThrow()
+      expect(typeof statInfo.size).toBe('number')
+      expect(typeof statInfo.mode).toBe('number')
+    }, timeout)
   })
 
   describe('Remove Handler', () => {
