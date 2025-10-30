@@ -1,3 +1,10 @@
+# [3.2.0](https://github.com/scalebox-dev/scalebox-sdk-js/compare/v3.1.2...v3.2.0) (2025-10-30)
+
+
+### Features
+
+* **code-interpreter:** enable chart data transmission and fix media field promotion ([066235d](https://github.com/scalebox-dev/scalebox-sdk-js/commit/066235d71d43d1ac22d5c41e9bed8336ae232960))
+
 ## [3.1.2](https://github.com/scalebox-dev/scalebox-sdk-js/compare/v3.1.1...v3.1.2) (2025-10-29)
 
 
