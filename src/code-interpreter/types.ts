@@ -355,6 +355,11 @@ export interface ExecutionResult {
   html?: string
   
   /**
+   * Chart data
+   */
+  chart?: ChartTypes
+  
+  /**
    * Execution logs
    */
   logs: {

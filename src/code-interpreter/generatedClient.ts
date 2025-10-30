@@ -15,9 +15,27 @@ import {
   DestroyContextRequestSchema,
   ExecuteRequestSchema,
   ExecutionService,
-  type ExecuteResponse
+  type ExecuteResponse,
+  type Chart as ProtoChart,
+  type ChartElement as ProtoChartElement,
+  type PointData as ProtoPointData,
+  type Point as ProtoPoint,
+  type BarData as ProtoBarData,
+  type PieData as ProtoPieData,
+  type BoxAndWhiskerData as ProtoBoxAndWhiskerData
 } from '../generated/api_pb.js'
-import type { CodeContext, ExecutionResponse, ExecutionStream } from './types'
+import type { 
+  CodeContext, 
+  ExecutionResponse, 
+  ExecutionStream, 
+  ChartTypes,
+  PointChart,
+  BarChart,
+  PieChart,
+  BoxAndWhiskerChart,
+  SuperChart,
+  ChartType
+} from './types'
 
 /**
  * Convert protobuf Timestamp to JavaScript Date
@@ -28,6 +46,139 @@ function timestampToDate(timestamp?: Timestamp): Date | undefined {
   const seconds = Number(timestamp.seconds ?? 0)
   const nanos = Number(timestamp.nanos ?? 0)
   return new Date(seconds * 1000 + Math.floor(nanos / 1000000))
+}
+
+/**
+ * Convert protobuf Point to our Point format
+ */
+function convertProtoPoint(point: ProtoPoint): { x: string | number; y: string | number } {
+  let x: string | number = 0
+  let y: string | number = 0
+  
+  if (point.xValue.case === 'xStr') {
+    x = point.xValue.value
+  } else if (point.xValue.case === 'xNum') {
+    x = point.xValue.value
+  }
+  
+  if (point.yValue.case === 'yStr') {
+    y = point.yValue.value
+  } else if (point.yValue.case === 'yNum') {
+    y = point.yValue.value
+  }
+  
+  return { x, y }
+}
+
+/**
+ * Convert protobuf Chart to our ChartTypes format
+ */
+function convertProtoChart(protoChart?: ProtoChart): ChartTypes | undefined {
+  if (!protoChart) return undefined
+  
+  const type = protoChart.type.toLowerCase() as ChartType
+  const title = protoChart.title || ''
+  
+  const elements: any[] = []
+  for (const element of protoChart.elements) {
+    if (element.element.case === 'pointData') {
+      const pointData = element.element.value
+      elements.push({
+        label: pointData.label || '',
+        points: pointData.points.map(convertProtoPoint)
+      })
+    } else if (element.element.case === 'barData') {
+      const barData = element.element.value
+      elements.push({
+        label: barData.label || '',
+        group: barData.group || '',
+        value: barData.value || ''
+      })
+    } else if (element.element.case === 'pieData') {
+      const pieData = element.element.value
+      elements.push({
+        label: pieData.label || '',
+        angle: pieData.angle || 0,
+        radius: pieData.radius || 0
+      })
+    } else if (element.element.case === 'boxWhiskerData') {
+      const boxData = element.element.value
+      elements.push({
+        label: boxData.label || '',
+        min: boxData.min || 0,
+        firstQuartile: boxData.firstQuartile || 0,
+        median: boxData.median || 0,
+        thirdQuartile: boxData.thirdQuartile || 0,
+        max: boxData.max || 0,
+        outliers: boxData.outliers || []
+      })
+    } else if (element.element.case === 'nestedChart') {
+      const nestedChart = convertProtoChart(element.element.value)
+      if (nestedChart) {
+        elements.push(nestedChart)
+      }
+    }
+  }
+  
+  switch (type) {
+    case 'line':
+    case 'scatter':
+      return {
+        type: type as 'line' | 'scatter',
+        title,
+        elements,
+        xLabel: protoChart.extra?.['xLabel'] || protoChart.extra?.['x_label'],
+        yLabel: protoChart.extra?.['yLabel'] || protoChart.extra?.['y_label'],
+        xUnit: protoChart.extra?.['xUnit'] || protoChart.extra?.['x_unit'],
+        yUnit: protoChart.extra?.['yUnit'] || protoChart.extra?.['y_unit'],
+        xTicks: [],
+        xTickLabels: [],
+        xScale: (protoChart.extra?.['xScale'] || protoChart.extra?.['x_scale'] || 'linear') as any,
+        yTicks: [],
+        yTickLabels: [],
+        yScale: (protoChart.extra?.['yScale'] || protoChart.extra?.['y_scale'] || 'linear') as any
+      } as PointChart
+      
+    case 'bar':
+      return {
+        type: 'bar',
+        title,
+        elements,
+        xLabel: protoChart.extra?.['xLabel'] || protoChart.extra?.['x_label'],
+        yLabel: protoChart.extra?.['yLabel'] || protoChart.extra?.['y_label'],
+        xUnit: protoChart.extra?.['xUnit'] || protoChart.extra?.['x_unit'],
+        yUnit: protoChart.extra?.['yUnit'] || protoChart.extra?.['y_unit']
+      } as BarChart
+      
+    case 'pie':
+      return {
+        type: 'pie',
+        title,
+        elements
+      } as PieChart
+      
+    case 'box_and_whisker':
+      return {
+        type: 'box_and_whisker',
+        title,
+        elements,
+        xLabel: protoChart.extra?.['xLabel'] || protoChart.extra?.['x_label'],
+        yLabel: protoChart.extra?.['yLabel'] || protoChart.extra?.['y_label'],
+        xUnit: protoChart.extra?.['xUnit'] || protoChart.extra?.['x_unit'],
+        yUnit: protoChart.extra?.['yUnit'] || protoChart.extra?.['y_unit']
+      } as BoxAndWhiskerChart
+      
+    case 'superchart':
+      return {
+        type: 'superchart',
+        title,
+        elements: elements as ChartTypes[]
+      } as SuperChart
+      
+    default:
+      console.warn(`Unknown chart type: ${type}`)
+      return undefined
+  }
 }
 
 /**
@@ -65,8 +216,8 @@ function transformExecuteResponse(response: ExecuteResponse): ExecutionResponse 
         json: res.json,
         javascript: res.javascript,
         data: res.data,
-        // Note: chart field needs type conversion
-        // chart: res.chart, // Commented out due to type incompatibility
+        // Convert protobuf Chart to our ChartTypes
+        chart: convertProtoChart(res.chart),
         executionCount: res.executionCount,
         isMainResult: res.isMainResult,
         extra: res.extra

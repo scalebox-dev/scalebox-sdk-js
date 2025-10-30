@@ -201,12 +201,12 @@ describe('Top-level Convenience Fields - Unit Tests', () => {
     expect(result.html).toBeUndefined();
   });
 
-  it('should ignore non-main results when populating top-level fields (customer issue)', () => {
+  it('should use media result when main result has no media content', () => {
     const execution = new Execution();
     execution.logs = new Logs(['output'], []);
     
-    // This simulates the customer's issue:
-    // Images were in results[].png but not in result.png
+    // This simulates matplotlib scenario:
+    // Image is in a non-main result, but main result has no media
     const imageResult: Result = {
       png: 'customer_image_data',
       svg: '<svg>customer_chart</svg>',
@@ -215,22 +215,24 @@ describe('Top-level Convenience Fields - Unit Tests', () => {
     
     const textResult: Result = {
       text: 'Final output',
-      isMainResult: true
+      isMainResult: true  // Main result, but no media
     };
     
     execution.results.push(imageResult, textResult);
     
     const result = executionToResult(execution, 'python');
     
-    // Before fix: result.png would be undefined even though results[0].png had data
-    // After fix: result.png should come from mainResult (textResult), which is undefined
-    expect(result.png).toBeUndefined();
-    expect(result.svg).toBeUndefined();
-    expect(result.text).toBe('Final output');
+    // NEW BEHAVIOR: When main result has no media, use result with media
+    // This fixes the matplotlib chart display issue
+    expect(result.png).toBe('customer_image_data');
+    expect(result.svg).toBe('<svg>customer_chart</svg>');
+    // Text field fallback: mainResult (imageResult now) has no text, so it uses stdout
+    expect(result.text).toBe('output');
     
-    // But the data is still accessible in results array
+    // Data is still accessible in results array
     expect(result.results?.[0].png).toBe('customer_image_data');
     expect(result.results?.[0].svg).toBe('<svg>customer_chart</svg>');
+    expect(result.results?.[1].text).toBe('Final output');
   });
 
   it('should populate fields when image result is marked as main', () => {

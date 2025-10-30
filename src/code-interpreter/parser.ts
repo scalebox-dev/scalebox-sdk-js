@@ -386,30 +386,56 @@ export function deserializeChart(data?: any): ChartTypes | undefined {
 export function executionToResult(execution: Execution, language: string, context?: any): ExecutionResult {
   // Find main result with intelligent fallback:
   // 1. First try to find result explicitly marked as main
-  // 2. If none, use first result with media content (png/svg/html/jpeg)
-  //    This handles the case where backend doesn't mark display_data as main
-  // Note: We don't fallback for text/markdown/json to preserve existing behavior
+  // 2. If main result has no media but another result does, use that instead
+  //    This handles cases where display_data is not marked as main
+  // 3. If no main result at all, use first result with media content
   let mainResult = execution.results.find(r => r.isMainResult)
   
+  const hasMediaContent = (r: any) => r.png || r.svg || r.html || r.jpeg || r.chart
+  
+  // If main result exists but has no media, check if another result has media
+  if (mainResult && !hasMediaContent(mainResult)) {
+    const resultWithMedia = execution.results.find(r => hasMediaContent(r))
+    if (resultWithMedia) {
+      // Use the result with media content instead
+      mainResult = resultWithMedia
+    }
+  }
+  
+  // If still no main result, fallback to first result with media
   if (!mainResult && execution.results.length > 0) {
-    // Fallback ONLY for media content (images, graphics, HTML)
-    // This is to fix the issue where display_data (e.g., from IPython.display.Image)
-    // is not marked as isMainResult by the backend
-    mainResult = execution.results.find(r => r.png || r.svg || r.html || r.jpeg)
+    mainResult = execution.results.find(r => hasMediaContent(r))
   }
   
   const hasError = execution.error !== undefined
+  
+  // Helper function to find first non-empty field from all results
+  const findFirstField = (fieldName: 'png' | 'svg' | 'html' | 'chart'): any => {
+    // If mainResult exists, use its value (even if undefined or empty string)
+    if (mainResult) {
+      return mainResult[fieldName]
+    }
+    // If no mainResult, fall back to searching all results
+    // This handles the case where display_data is not marked as main
+    for (const result of execution.results) {
+      if (result[fieldName]) {
+        return result[fieldName]
+      }
+    }
+    return undefined
+  }
   
   return {
     stdout: execution.logs.stdout.join(''),
     stderr: execution.logs.stderr.join(''),
     exitCode: hasError ? 1 : 0,
     error: execution.error,
-    // Populate top-level convenience fields from main result
+    // Populate top-level convenience fields from main result or first non-empty result
     text: mainResult?.text || execution.logs.stdout.join(''),
-    png: mainResult?.png,
-    svg: mainResult?.svg,
-    html: mainResult?.html,
+    png: findFirstField('png'),
+    svg: findFirstField('svg'),
+    html: findFirstField('html'),
+    chart: findFirstField('chart'),
     logs: {
       stdout: execution.logs.stdout.join(''),
       stderr: execution.logs.stderr.join(''),
