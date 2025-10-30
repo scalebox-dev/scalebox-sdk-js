@@ -1,3 +1,10 @@
+# [3.3.0](https://github.com/scalebox-dev/scalebox-sdk-js/compare/v3.2.0...v3.3.0) (2025-10-30)
+
+
+### Features
+
+* Add high-level Session API for simplified code execution ([9c83648](https://github.com/scalebox-dev/scalebox-sdk-js/commit/9c83648583498e2808cc98b2256824a28113e250))
+
 # [3.2.0](https://github.com/scalebox-dev/scalebox-sdk-js/compare/v3.1.2...v3.2.0) (2025-10-30)
 
 
