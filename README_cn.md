@@ -13,6 +13,17 @@
 一个用于在可控沙箱中执行多语言代码的 JavaScript SDK，支持同步与异步模式，以及多语言 Kernel（Python、R、Node.js、Deno/TypeScript、Java/IJAVA、Bash）。已提供全面的真实环境测试用例与脚本。
 
 ## 功能特性
+
+### 🚀 高级 API（新功能！）
+- **Session API**：一行代码执行，自动生命周期管理
+- **智能缓存**：会话复用和依赖缓存，性能提升 10-100 倍
+- **自动续期**：自动管理会话超时
+- **进度追踪**：实时执行进度和性能洞察
+- **类型安全**：完整的 TypeScript 支持，零 `any`
+
+[📖 Session API 英文文档](./docs/SESSION_API.md) | [📖 中文文档](./docs/SESSION_API_ZH.md)
+
+### 💪 核心功能
 - 多语言内核：Python、R、Node.js、Deno/TypeScript、Java/IJAVA、Bash
 - 同步 `Sandbox` 与异步 `AsyncSandbox` 执行
 - 持久上下文：跨多次执行保留变量/状态
@@ -82,6 +93,73 @@ const sandbox = await Sandbox.create('code-interpreter', {
 ```
 
 ## 快速开始
+
+### 🚀 Session API（推荐）
+
+最简单的代码执行方式 - 一切都自动处理！
+
+```typescript
+import { Session } from '@scalebox/sdk'
+
+// 简单执行
+const result = await Session.run({
+  code: 'print("你好，Scalebox！")',
+  language: 'python'
+})
+
+console.log(result.text)  // 你好，Scalebox！
+```
+
+**多步骤工作流与会话复用（快 10-100 倍）：**
+
+```typescript
+// 步骤 1：使用包初始化
+const step1 = await Session.run({
+  code: 'import pandas as pd; import numpy as np',
+  packages: ['pandas', 'numpy'],
+  keepAlive: true  // 保持会话以供复用
+})
+
+// 步骤 2：上传并处理数据（复用会话，包已安装！）
+const step2 = await Session.run({
+  code: 'df = pd.read_csv("data.csv"); print(df.head())',
+  sessionId: step1.sessionId,
+  files: { 'data.csv': csvData }
+})
+
+// 步骤 3：继续分析
+const step3 = await Session.run({
+  code: 'print(df.describe())',
+  sessionId: step1.sessionId
+})
+
+// 完成后关闭
+await Session.close(step1.sessionId!)
+```
+
+**实时进度追踪：**
+
+```typescript
+const result = await Session.run({
+  code: pythonCode,
+  packages: ['pandas', 'matplotlib'],
+  onProgress: (progress) => {
+    console.log(`[${progress.stage}] ${progress.percent}% - ${progress.message}`)
+  }
+})
+
+// 检查性能洞察
+console.log('计时:', result.timing)
+console.log('瓶颈:', result.insights.bottleneck)
+console.log('建议:', result.insights.suggestions)
+```
+
+[📖 完整 Session API 指南](./docs/SESSION_API_ZH.md) | [📖 English Guide](./docs/SESSION_API.md) | [📁 更多示例](./examples/session-api.mts)
+
+### 💪 低级 API（高级用法）
+
+用于对沙箱生命周期的精细控制：
+
 ```javascript
 import { Sandbox } from '@scalebox/sdk'
 

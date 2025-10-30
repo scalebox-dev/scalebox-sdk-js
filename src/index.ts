@@ -14,6 +14,9 @@ export { ProcessManager } from './sandbox/process'
 export { CodeInterpreter } from './code-interpreter/index'
 export { Desktop } from './desktop'
 
+// High-Level Session API
+export { Session, SessionExecutor, ExecutionTimer } from './session'
+
 
 // Desktop type exports
 export type {
@@ -122,6 +125,18 @@ export type {
   CodeExecutionOpts
 } from './code-interpreter/types'
 export type { ConnectionConfigOpts } from './connectionConfig'
+
+// High-Level Session API type exports
+export type {
+  ExecutionRequest,
+  ExecutionResponse,
+  ExecutionStage,
+  ExecutionTiming,
+  ExecutionInsights,
+  ProgressInfo,
+  SessionInfo,
+  SessionRenewalInfo
+} from './session/types'
 
 // Error exports
 export { 

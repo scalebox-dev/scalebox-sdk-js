@@ -143,7 +143,7 @@ export class ApiClient {
       memoryMb: request.memoryMB, // 注意：这里是 memoryMb 不是 memoryMB
       storageGb: request.storageGB, // 注意：这里是 storageGb 不是 storageGB
       metadata: request.metadata,
-      timeout: request.timeout || 300, // 默认 5 分钟
+      timeout: request.timeout || 300, // timeout in seconds, default 5 minutes
       envVars: request.envVars, // 将转换为 env_vars
       secure: request.secure ?? true, // 默认启用安全
       allowInternetAccess: request.allowInternetAccess ?? true, // 将转换为 allow_internet_access
@@ -167,14 +167,21 @@ export class ApiClient {
     }
     
     // 由于 processResponse 已经转换了键名，这里直接使用 camelCase 字段
+    // Calculate endAt: prefer timeoutAt from backend, fallback to startedAt + timeout calculation
+    // Note: Backend always returns timeout in seconds, so we convert to ms for date calculation
+    const sandboxStartedAt = sandboxData.startedAt ? new Date(sandboxData.startedAt) : new Date()
+    const sandboxEndAt = sandboxData.timeoutAt 
+      ? new Date(sandboxData.timeoutAt)
+      : new Date(sandboxStartedAt.getTime() + sandboxData.timeout * 1000)
+    
     return {
       // 标准字段
       sandboxId: sandboxData.sandboxId || '',
       templateId: sandboxData.templateId || '',
       name: sandboxData.name || '',
       metadata: sandboxData.metadata || {},
-      startedAt: sandboxData.startedAt ? new Date(sandboxData.startedAt) : new Date(),
-      endAt: sandboxData.createdAt ? new Date(new Date(sandboxData.createdAt).getTime() + (sandboxData.timeout || 300) * 1000) : new Date(),
+      startedAt: sandboxStartedAt,
+      endAt: sandboxEndAt,
       status: sandboxData.status || 'created',
       cpuCount: sandboxData.cpuCount || 1,
       memoryMB: sandboxData.memoryMb || 512,
@@ -254,14 +261,21 @@ export class ApiClient {
     }
     
     // processResponse 已经转换了键名，直接使用 camelCase 字段
+    // Calculate endAt: prefer timeoutAt from backend, fallback to startedAt + timeout calculation
+    // Note: Backend always returns timeout in seconds, so we convert to ms for date calculation
+    const sandboxStartedAt = sandboxData.startedAt ? new Date(sandboxData.startedAt) : new Date()
+    const sandboxEndAt = sandboxData.timeoutAt 
+      ? new Date(sandboxData.timeoutAt)
+      : new Date(sandboxStartedAt.getTime() + sandboxData.timeout * 1000)
+    
     return {
       // 标准字段
       sandboxId: sandboxData.sandboxId || '',
       templateId: sandboxData.templateId || '',
       name: sandboxData.name || '',
       metadata: sandboxData.metadata || {},
-      startedAt: sandboxData.startedAt ? new Date(sandboxData.startedAt) : new Date(),
-      endAt: sandboxData.stoppedAt ? new Date(sandboxData.stoppedAt) : new Date(),
+      startedAt: sandboxStartedAt,
+      endAt: sandboxEndAt,
       status: sandboxData.status || 'created',
       cpuCount: sandboxData.cpuCount || 1,
       memoryMB: sandboxData.memoryMb || 512,

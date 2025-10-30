@@ -15,6 +15,17 @@ A JavaScript SDK for executing multi-language code in controlled sandboxes, supp
 [中文文档](./README_cn.md)
 
 ## Features
+
+### 🚀 High-Level API (New!)
+- **Session API**: One-line code execution with automatic lifecycle management
+- **Smart Caching**: 10-100x faster with session reuse and dependency caching
+- **Auto Renewal**: Automatic session timeout management
+- **Progress Tracking**: Real-time execution progress and performance insights
+- **Type Safe**: Full TypeScript support with zero `any`
+
+[📖 Session API Documentation](./docs/SESSION_API.md) | [📖 中文文档](./docs/SESSION_API_ZH.md)
+
+### 💪 Core Features
 - Multi-language kernels: Python, R, Node.js, Deno/TypeScript, Java/IJAVA, Bash
 - Synchronous `Sandbox` and asynchronous `AsyncSandbox` execution
 - Persistent context: Retain variables/state across multiple executions
@@ -84,6 +95,73 @@ const sandbox = await Sandbox.create('code-interpreter', {
 ```
 
 ## Quick Start
+
+### 🚀 Session API (Recommended)
+
+The simplest way to execute code - everything is handled automatically!
+
+```typescript
+import { Session } from '@scalebox/sdk'
+
+// Simple execution
+const result = await Session.run({
+  code: 'print("Hello, Scalebox!")',
+  language: 'python'
+})
+
+console.log(result.text)  // Hello, Scalebox!
+```
+
+**Multi-step workflow with session reuse (10-100x faster):**
+
+```typescript
+// Step 1: Initialize with packages
+const step1 = await Session.run({
+  code: 'import pandas as pd; import numpy as np',
+  packages: ['pandas', 'numpy'],
+  keepAlive: true  // Keep session for reuse
+})
+
+// Step 2: Upload and process data (reuses session, packages already installed!)
+const step2 = await Session.run({
+  code: 'df = pd.read_csv("data.csv"); print(df.head())',
+  sessionId: step1.sessionId,
+  files: { 'data.csv': csvData }
+})
+
+// Step 3: Continue analysis
+const step3 = await Session.run({
+  code: 'print(df.describe())',
+  sessionId: step1.sessionId
+})
+
+// Close when done
+await Session.close(step1.sessionId!)
+```
+
+**Real-time progress tracking:**
+
+```typescript
+const result = await Session.run({
+  code: pythonCode,
+  packages: ['pandas', 'matplotlib'],
+  onProgress: (progress) => {
+    console.log(`[${progress.stage}] ${progress.percent}% - ${progress.message}`)
+  }
+})
+
+// Check performance insights
+console.log('Timing:', result.timing)
+console.log('Bottleneck:', result.insights.bottleneck)
+console.log('Suggestions:', result.insights.suggestions)
+```
+
+[📖 Complete Session API Guide](./docs/SESSION_API.md) | [📖 完整中文指南](./docs/SESSION_API_ZH.md) | [📁 More Examples](./examples/session-api.mts)
+
+### 💪 Low-Level API (Advanced)
+
+For fine-grained control over sandbox lifecycle:
+
 ```javascript
 import { Sandbox } from '@scalebox/sdk'
 
