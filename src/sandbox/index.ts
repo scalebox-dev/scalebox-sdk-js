@@ -231,9 +231,9 @@ export class Sandbox {
     // This ensures the sandbox is fully ready before returning to the client
     try {
       await instance.waitForHealth({
-        maxRetries: 50,
-        retryInterval: 100,
-        timeout: 5000
+        maxRetries: 100,
+        retryInterval: 200,
+        timeout: 10000
       })
     } catch (error) {
       // Don't throw - allow sandbox to be returned even if health check fails
@@ -624,7 +624,7 @@ export class Sandbox {
         const response = await fetch(healthUrl, {
           method: 'GET',
           headers: requestHeaders,
-          signal: AbortSignal.timeout(1000) // 1 second timeout for each health check
+          signal: AbortSignal.timeout(2000) // 2 second timeout for each health check
         })
         
         if (response.ok) {
