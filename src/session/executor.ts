@@ -446,18 +446,25 @@ export class SessionExecutor {
   /**
    * Get install command for language
    */
-  private static getInstallCommand(language: Language, packages: string[]): string {
-    switch (language) {
-      case 'python':
-        return `pip install ${packages.join(' ')}`
-      case 'javascript':
-      case 'typescript':
-        return `npm install ${packages.join(' ')}`
-      case 'r':
-        return `R -e "install.packages(c(${packages.map(p => `'${p}'`).join(', ')}))"`
-      default:
-        throw new ScaleboxError(`Unsupported language for package installation: ${language}`)
+  private static getInstallCommand(language: Language | string, packages: string[]): string {
+    const lang = language.toLowerCase()
+    
+    // npm-based languages (JavaScript, Node.js, Deno, TypeScript)
+    if (['javascript', 'node', 'nodejs', 'js', 'deno', 'typescript', 'ts'].includes(lang)) {
+      return `npm install ${packages.join(' ')}`
     }
+    
+    // Python
+    if (lang === 'python' || lang === 'python3') {
+      return `pip install ${packages.join(' ')}`
+    }
+    
+    // R
+    if (lang === 'r') {
+      return `R -e "install.packages(c(${packages.map(p => `'${p}'`).join(', ')}))"`
+    }
+    
+    throw new ScaleboxError(`Unsupported language for package installation: ${language}`)
   }
   
   /**

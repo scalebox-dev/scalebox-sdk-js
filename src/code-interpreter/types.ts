@@ -10,7 +10,7 @@
  * Supported programming languages for code execution
  * These correspond to the runtime environments available in the sandbox
  */
-export type Language = 'python' | 'javascript' | 'typescript' | 'r' | 'java' | 'bash' | 'node' | 'deno'
+export type Language = 'python' | 'javascript' | 'typescript' | 'r' | 'java' | 'bash' | 'node' | 'nodejs' | 'deno'
 
 /**
  * Chart type enumeration

@@ -25,8 +25,10 @@ export type ExecutionStage =
 
 /**
  * Programming language support
+ * 
+ * Note: This should match the Language type in code-interpreter/types.ts
  */
-export type Language = 'python' | 'javascript' | 'typescript' | 'r' | 'bash'
+export type Language = 'python' | 'javascript' | 'typescript' | 'r' | 'java' | 'bash' | 'node' | 'nodejs' | 'deno'
 
 /**
  * Progress information for real-time feedback
