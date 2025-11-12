@@ -1,3 +1,10 @@
+# [3.4.0](https://github.com/scalebox-dev/scalebox-sdk-js/compare/v3.3.0...v3.4.0) (2025-11-12)
+
+
+### Features
+
+* **types:** add nodejs language support and unify language types ([e6dd4ec](https://github.com/scalebox-dev/scalebox-sdk-js/commit/e6dd4eca2768b3d861838c7dfdfe97d0d6f1e766))
+
 # [3.3.0](https://github.com/scalebox-dev/scalebox-sdk-js/compare/v3.2.0...v3.3.0) (2025-10-30)
 
 
