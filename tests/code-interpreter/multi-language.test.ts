@@ -3,7 +3,7 @@
  * 
  * This test suite validates multi-language support:
  * - R language execution
- * - Node.js/JavaScript execution
+ * - Node.js/JavaScript execution (javascript and nodejs aliases)
  * - Bash shell commands
  * - Java execution
  * - TypeScript execution
@@ -106,6 +106,43 @@ run();
       expect(execution.error).toBeUndefined();
       expect(execution.logs.stdout.includes('Async task started')).toBe(true);
       console.log('JavaScript async operations test passed');
+    });
+  });
+
+  describe('Node.js Support (nodejs alias)', () => {
+    it('should execute basic Node.js code using nodejs language', async () => {
+      expect(interpreter).not.toBeNull();
+
+      const code = `
+console.log("Hello from Node.js!");
+const x = 10, y = 20;
+console.log(\`Sum: \${x + y}\`);
+({ sum: x + y, product: x * y })
+`;
+
+      const execution = await interpreter!.runCode(code, { language: 'nodejs' });
+      expect(execution.error).toBeUndefined();
+      expect(execution.logs.stdout.includes('Hello from Node.js!')).toBe(true);
+      console.log('Node.js (nodejs alias) basic execution test passed');
+    });
+
+    it('should handle Node.js async operations using nodejs language', async () => {
+      expect(interpreter).not.toBeNull();
+
+      const code = `
+async function run() {
+  console.log("Node.js async task started");
+  await new Promise(r => setTimeout(r, 100));
+  console.log("Node.js async task completed");
+  return { status: "done", value: 100 };
+}
+run();
+`;
+
+      const execution = await interpreter!.runCode(code, { language: 'nodejs' });
+      expect(execution.error).toBeUndefined();
+      expect(execution.logs.stdout.includes('Node.js async task started')).toBe(true);
+      console.log('Node.js (nodejs alias) async operations test passed');
     });
   });
 
