@@ -235,6 +235,20 @@ export class SessionExecutor {
       
       timer.updateProgress(60, 'Checking session health')
       
+      // 🔥 Check if session is paused and auto-resume if needed
+      const sandboxInfo = await session.sandbox.getInfo()
+      if (sandboxInfo.status === 'paused') {
+        timer.updateProgress(70, 'Resuming paused session')
+        // Auto-resume by connecting (unified endpoint handles resume)
+        // Note: Currently backend only preserves file system state after pause/resume.
+        // Memory-level state (variables, imports, context) preservation is under development.
+        // The existing context will be reused, but may not preserve all state.
+        await session.sandbox.connect({
+          timeoutMs: request.timeout || 600000
+        })
+        timer.updateProgress(80, 'Session resumed')
+      }
+      
       // 🔥 Automatic renewal: Delegate to Sandbox.setTimeout
       await this.autoRenewIfNeeded(session, request)
       
@@ -246,7 +260,8 @@ export class SessionExecutor {
       timer.updateProgress(20, 'Creating new sandbox')
       
       const sandbox = await Sandbox.create('code-interpreter', {
-        timeoutMs: request.timeout || 600000
+        timeoutMs: request.timeout || 600000,
+        objectStorage: request.objectStorage
       })
       
       timer.updateProgress(60, 'Initializing code interpreter')
@@ -519,6 +534,17 @@ export class SessionExecutor {
     const sandboxInfo = await session.sandbox.getInfo()
     const isRunning = await session.sandbox.isRunning()
     
+    // Determine status: check sandboxInfo.status first, then fallback to isRunning
+    // sandboxInfo.status can be 'running' | 'paused' | 'stopped' | etc.
+    let status: 'running' | 'paused' | 'stopped'
+    if (sandboxInfo.status === 'paused') {
+      status = 'paused'
+    } else if (isRunning) {
+      status = 'running'
+    } else {
+      status = 'stopped'
+    }
+    
     const expiresAt = sandboxInfo.endAt ? new Date(sandboxInfo.endAt) : undefined
     const remainingTime = expiresAt ? expiresAt.getTime() - Date.now() : undefined
     
@@ -533,7 +559,7 @@ export class SessionExecutor {
       createdAt: session.createdAt,
       
       // Sandbox layer state (real-time query)
-      status: isRunning ? 'running' : 'stopped',
+      status,
       startedAt: sandboxInfo.startedAt
         ? new Date(sandboxInfo.startedAt)
         : session.createdAt,
@@ -576,6 +602,24 @@ export class SessionExecutor {
     }
     
     return results
+  }
+  
+  /**
+   * Pause session to save resources
+   * 
+   * Delegates to Sandbox layer for pause operation.
+   * 
+   * @param sessionId Session identifier
+   * @returns `true` if paused successfully, `false` if already paused
+   */
+  static async pause(sessionId: string): Promise<boolean> {
+    const session = this.sessions.get(sessionId)
+    if (!session) {
+      throw new ScaleboxError(`Session ${sessionId} not found`)
+    }
+
+    // 🔥 Delegate to Sandbox layer
+    return await session.sandbox.betaPause()
   }
   
   /**

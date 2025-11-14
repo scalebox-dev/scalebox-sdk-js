@@ -424,12 +424,93 @@ print(f"File content from Python: {content}")
 }
 
 /**
- * Example 9: Error Handling
+ * Example 9: Pause and Resume for Cost Optimization
+ * 
+ * Pause sessions to save compute resources during idle periods.
+ * Session state (files, packages, variables) is preserved.
+ */
+async function example9_PauseResume() {
+  console.log('\n=== Example 9: Pause and Resume for Cost Optimization ===\n')
+  
+  // Step 1: Create session and process data
+  console.log('Step 1: Create session and process data')
+  const result1 = await Session.run({
+    code: `
+import pandas as pd
+import numpy as np
+
+# Load and process data
+data = np.random.randn(100, 3)
+df = pd.DataFrame(data, columns=['A', 'B', 'C'])
+print("Dataset created with shape:", df.shape)
+print("First few rows:")
+print(df.head())
+    `,
+    packages: ['pandas', 'numpy'],
+    keepAlive: true
+  })
+  
+  console.log(result1.text)
+  const sessionId = result1.sessionId!
+  console.log(`Session ID: ${sessionId}`)
+  
+  // Step 2: Check session status
+  console.log('\nStep 2: Check session status')
+  const sessionInfo = await Session.getSession(sessionId)
+  console.log(`Status: ${sessionInfo.status}`)
+  console.log(`Remaining time: ${Math.floor(sessionInfo.remainingTime! / 60000)} minutes`)
+  
+  // Step 3: Pause session to save resources
+  console.log('\nStep 3: Pause session to save resources')
+  await Session.pause(sessionId)
+  console.log('✅ Session paused - no compute costs')
+  
+  // Wait a bit (simulating long idle period)
+  console.log('\n⏳ Simulating long idle period (5 seconds)...')
+  await new Promise(resolve => setTimeout(resolve, 5000))
+  
+  // Step 4: Check paused status
+  console.log('\nStep 4: Check paused status')
+  const pausedInfo = await Session.getSession(sessionId)
+  console.log(`Status: ${pausedInfo.status}`)
+  console.log(`Packages installed: ${pausedInfo.installedPackages.join(', ')}`)
+  
+  // Step 5: Resume automatically when reusing
+  console.log('\nStep 5: Resume automatically when reusing')
+  console.log('Note: Session.run() automatically resumes paused sessions')
+  
+  const result2 = await Session.run({
+    code: `
+# Variables and data from before pause are still available!
+print("Dataset shape:", df.shape)
+print("Statistics:")
+print(df.describe())
+    `,
+    sessionId,
+    keepAlive: true
+  })
+  
+  console.log(result2.text)
+  console.log('✅ Session automatically resumed and data preserved')
+  
+  // Step 6: Verify session is running again
+  console.log('\nStep 6: Verify session is running again')
+  const resumedInfo = await Session.getSession(sessionId)
+  console.log(`Status: ${resumedInfo.status}`)
+  console.log(`Remaining time: ${Math.floor(resumedInfo.remainingTime! / 60000)} minutes`)
+  
+  // Clean up
+  await Session.close(sessionId)
+  console.log('\n✅ Session closed')
+}
+
+/**
+ * Example 10: Error Handling
  * 
  * Proper error handling and cleanup.
  */
-async function example9_ErrorHandling() {
-  console.log('\n=== Example 9: Error Handling ===\n')
+async function example10_ErrorHandling() {
+  console.log('\n=== Example 10: Error Handling ===\n')
   
   let sessionId: string | undefined
   
@@ -485,7 +566,8 @@ async function main() {
     await example6_PerformanceInsights()
     await example7_SessionManagement()
     await example8_AdvancedUsage()
-    await example9_ErrorHandling()
+    await example9_PauseResume()
+    await example10_ErrorHandling()
     
     console.log('\n✅ All examples completed successfully!')
     

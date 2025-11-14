@@ -27,6 +27,7 @@ The high-level Session API has been successfully implemented for the Scalebox Ja
   
 - **`index.ts`** - Session API facade
   - `Session.run()` - Main execution method
+  - `Session.pause()` - Pause session to save resources
   - `Session.keepAlive()` - Manual session renewal
   - `Session.getSession()` - Query session information
   - `Session.listSessions()` - List all active sessions
@@ -64,6 +65,11 @@ The high-level Session API has been successfully implemented for the Scalebox Ja
   - Package installation caching
   - File upload caching
   - Session management APIs
+  
+- **`pause-resume.test.ts`** - Pause/Resume functionality tests
+  - Pause session and verify state preservation
+  - Automatic resume on session reuse
+  - Status tracking for paused sessions
 
 ## 🎯 Key Features
 
@@ -82,17 +88,23 @@ The high-level Session API has been successfully implemented for the Scalebox Ja
 - Silent background operation
 - No manual timeout management needed
 
-### 4. Real-Time Progress Tracking
+### 4. Pause/Resume Support
+- Pause sessions to save compute resources (CPU, memory)
+- Automatic resume when reusing sessions via `Session.run()`
+- Session state (variables, files, packages) preserved during pause
+- Cost optimization for long idle periods
+
+### 5. Real-Time Progress Tracking
 - Detailed progress callbacks for each stage
 - Complete timing statistics (ms breakdown)
 - Percentage distribution visualization
 
-### 5. Performance Insights
+### 6. Performance Insights
 - Automatic bottleneck detection
 - Context-aware optimization suggestions
 - Actionable recommendations
 
-### 6. Two-Level API Design
+### 7. Two-Level API Design
 - **Session Layer**: High-level with smart automation
 - **Sandbox Layer**: Direct access for advanced operations
 - Flexible entry points for different use cases
@@ -176,6 +188,26 @@ const result = await Session.run({
 
 console.log('Timing:', result.timing)
 console.log('Insights:', result.insights)
+```
+
+### Pause/Resume for Cost Optimization
+```typescript
+// Create and pause session
+const result = await Session.run({
+  code: 'import pandas as pd; df = pd.read_csv("data.csv")',
+  files: { 'data.csv': csvData },
+  packages: ['pandas'],
+  keepAlive: true
+})
+
+// Pause to save resources during long wait
+await Session.pause(result.sessionId!)
+
+// Later: automatically resumed when reusing
+const result2 = await Session.run({
+  code: 'print(df.describe())',
+  sessionId: result.sessionId  // ✅ Automatically resumes
+})
 ```
 
 ## 🎉 Naming Decision

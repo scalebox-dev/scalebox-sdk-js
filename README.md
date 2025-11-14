@@ -139,6 +139,30 @@ const step3 = await Session.run({
 await Session.close(step1.sessionId!)
 ```
 
+**Pause/Resume for cost optimization:**
+
+```typescript
+// Create session and process data
+const result = await Session.run({
+  code: 'import pandas as pd; df = pd.read_csv("data.csv")',
+  files: { 'data.csv': csvData },
+  packages: ['pandas'],
+  keepAlive: true
+})
+
+// Pause to save resources during long wait for external data
+await Session.pause(result.sessionId!)
+
+// Later: automatically resumed when reusing
+const result2 = await Session.run({
+  code: 'print(df.describe())',
+  sessionId: result.sessionId  // ✅ Automatically resumes
+})
+
+// Close when done
+await Session.close(result.sessionId!)
+```
+
 **Real-time progress tracking:**
 
 ```typescript
@@ -154,6 +178,28 @@ const result = await Session.run({
 console.log('Timing:', result.timing)
 console.log('Bottleneck:', result.insights.bottleneck)
 console.log('Suggestions:', result.insights.suggestions)
+```
+
+**Object storage mount (S3-compatible):**
+
+```typescript
+// Create session with object storage mounted
+const result = await Session.run({
+  code: `
+    import os
+    # Object storage is mounted at the specified mount point
+    files = os.listdir('/mnt/oss')
+    print(f'Files in OSS: {files}')
+  `,
+  objectStorage: {
+    uri: 's3://my-bucket/data/',
+    mountPoint: '/mnt/oss',
+    accessKey: 'YOUR_ACCESS_KEY',
+    secretKey: 'YOUR_SECRET_KEY',
+    region: 'ap-east-1',
+    endpoint: 'https://s3.ap-east-1.amazonaws.com'
+  }
+})
 ```
 
 [📖 Complete Session API Guide](./docs/SESSION_API.md) | [📖 完整中文指南](./docs/SESSION_API_ZH.md) | [📁 More Examples](./examples/session-api.mts)
@@ -225,6 +271,20 @@ const sandbox = await Sandbox.create('code-interpreter', {
   envs: { NODE_ENV: 'production' }
 })
 
+// Create sandbox with object storage mount
+const sandboxWithOSS = await Sandbox.create('code-interpreter', {
+  timeoutMs: 300000,
+  objectStorage: {
+    uri: 's3://my-bucket/data/',
+    mountPoint: '/mnt/oss',
+    accessKey: 'YOUR_ACCESS_KEY',
+    secretKey: 'YOUR_SECRET_KEY',
+    region: 'ap-east-1',
+    endpoint: 'https://s3.ap-east-1.amazonaws.com'
+  }
+})
+// Object storage is now mounted at /mnt/oss
+
 // Connect to existing sandbox
 const connectedSandbox = await Sandbox.connect('sandbox-id')
 
@@ -240,6 +300,42 @@ await sandbox.setTimeout(600000) // 10 minutes
 await sandbox.betaPause() // Pause sandbox
 await sandbox.kill() // Close sandbox
 ```
+
+### Pause and Resume Operations
+
+Pause sandboxes to save compute resources while preserving filesystem state. Paused sandboxes don't consume CPU or memory, only storage.
+
+```javascript
+// Pause a running sandbox
+await sandbox.betaPause()
+console.log('Sandbox paused - no compute costs')
+
+// Resume paused sandbox using connect (unified endpoint)
+// connect() automatically resumes if paused, or connects if running
+await sandbox.connect()
+console.log('Sandbox resumed and ready')
+
+// Resume with new timeout
+await sandbox.connect({ timeoutMs: 900000 }) // 15 minutes
+
+// Check sandbox status
+const info = await sandbox.getInfo()
+console.log('Status:', info.status) // 'running' | 'paused' | 'stopped'
+
+// Static connect method (auto-resumes if paused)
+const connectedSandbox = await Sandbox.connect(sandboxId)
+```
+
+**Benefits:**
+- **Cost optimization**: Paused sandboxes only charge for storage, not CPU/RAM
+- **State preservation**: Files, installed packages, and filesystem state are preserved
+- **Automatic resume**: Use `connect()` to automatically resume paused sandboxes
+- **Timeout management**: Update timeout when resuming
+
+**Use cases:**
+- Long idle periods between executions
+- Batch processing with gaps
+- Cost optimization for infrequently used sandboxes
 
 ### Filesystem Operations
 ```javascript

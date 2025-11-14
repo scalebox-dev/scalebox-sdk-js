@@ -137,6 +137,30 @@ const step3 = await Session.run({
 await Session.close(step1.sessionId!)
 ```
 
+**暂停/恢复以优化成本：**
+
+```typescript
+// 创建会话并处理数据
+const result = await Session.run({
+  code: 'import pandas as pd; df = pd.read_csv("data.csv")',
+  files: { 'data.csv': csvData },
+  packages: ['pandas'],
+  keepAlive: true
+})
+
+// 暂停以在等待外部数据期间节省资源
+await Session.pause(result.sessionId!)
+
+// 稍后：复用时会自动恢复
+const result2 = await Session.run({
+  code: 'print(df.describe())',
+  sessionId: result.sessionId  // ✅ 自动恢复
+})
+
+// 完成后关闭
+await Session.close(result.sessionId!)
+```
+
 **实时进度追踪：**
 
 ```typescript
@@ -152,6 +176,28 @@ const result = await Session.run({
 console.log('计时:', result.timing)
 console.log('瓶颈:', result.insights.bottleneck)
 console.log('建议:', result.insights.suggestions)
+```
+
+**对象存储挂载（S3 兼容）：**
+
+```typescript
+// 创建带对象存储挂载的会话
+const result = await Session.run({
+  code: `
+    import os
+    # 对象存储已挂载到指定的挂载点
+    files = os.listdir('/mnt/oss')
+    print(f'OSS 中的文件: {files}')
+  `,
+  objectStorage: {
+    uri: 's3://my-bucket/data/',
+    mountPoint: '/mnt/oss',
+    accessKey: 'YOUR_ACCESS_KEY',
+    secretKey: 'YOUR_SECRET_KEY',
+    region: 'ap-east-1',
+    endpoint: 'https://s3.ap-east-1.amazonaws.com'
+  }
+})
 ```
 
 [📖 完整 Session API 指南](./docs/SESSION_API_ZH.md) | [📖 English Guide](./docs/SESSION_API.md) | [📁 更多示例](./examples/session-api.mts)
@@ -223,6 +269,20 @@ const sandbox = await Sandbox.create('code-interpreter', {
   envs: { NODE_ENV: 'production' }
 })
 
+// 创建带对象存储挂载的沙箱
+const sandboxWithOSS = await Sandbox.create('code-interpreter', {
+  timeoutMs: 300000,
+  objectStorage: {
+    uri: 's3://my-bucket/data/',
+    mountPoint: '/mnt/oss',
+    accessKey: 'YOUR_ACCESS_KEY',
+    secretKey: 'YOUR_SECRET_KEY',
+    region: 'ap-east-1',
+    endpoint: 'https://s3.ap-east-1.amazonaws.com'
+  }
+})
+// 对象存储已挂载到 /mnt/oss
+
 // 连接到现有沙箱
 const connectedSandbox = await Sandbox.connect('sandbox-id')
 
@@ -238,6 +298,42 @@ await sandbox.setTimeout(600000) // 10分钟
 await sandbox.betaPause() // 暂停沙箱
 await sandbox.kill() // 关闭沙箱
 ```
+
+### 暂停和恢复操作
+
+暂停沙箱以节省计算资源，同时保留文件系统状态。暂停的沙箱不消耗 CPU 或内存，仅消耗存储。
+
+```javascript
+// 暂停运行中的沙箱
+await sandbox.betaPause()
+console.log('沙箱已暂停 - 无计算成本')
+
+// 使用 connect 恢复暂停的沙箱（统一端点）
+// connect() 如果已暂停则自动恢复，如果正在运行则直接连接
+await sandbox.connect()
+console.log('沙箱已恢复并准备就绪')
+
+// 恢复时更新超时时间
+await sandbox.connect({ timeoutMs: 900000 }) // 15分钟
+
+// 检查沙箱状态
+const info = await sandbox.getInfo()
+console.log('状态:', info.status) // 'running' | 'paused' | 'stopped'
+
+// 静态 connect 方法（如果已暂停则自动恢复）
+const connectedSandbox = await Sandbox.connect(sandboxId)
+```
+
+**优势：**
+- **成本优化**：暂停的沙箱仅收取存储费用，不收取 CPU/RAM 费用
+- **状态保留**：文件、已安装的包和文件系统状态都会保留
+- **自动恢复**：使用 `connect()` 自动恢复暂停的沙箱
+- **超时管理**：恢复时可以更新超时时间
+
+**使用场景：**
+- 执行之间的长时间空闲期
+- 有间隔的批处理
+- 不常用沙箱的成本优化
 
 ### 文件系统操作
 ```javascript

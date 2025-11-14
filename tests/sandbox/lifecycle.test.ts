@@ -157,6 +157,205 @@ describe('Sandbox Lifecycle Management', () => {
     })
   })
 
+  describe('Pause and Resume Operations', () => {
+    // Each test creates its own sandbox to avoid state interference
+
+    it('should pause a running sandbox', async () => {
+      console.log('⏸️ Testing pause operation...')
+      
+      // Create a fresh sandbox for this test
+      const sandbox = await Sandbox.create('code-interpreter', {
+        timeoutMs: 600000,
+        metadata: { purpose: 'pause-test' }
+      })
+      createdSandboxes.push(sandbox.sandboxId)
+      console.log(`✅ Test sandbox created: ${sandbox.sandboxId}`)
+      
+      // Verify sandbox is running
+      const isRunningBefore = await sandbox.isRunning()
+      expect(isRunningBefore).toBe(true)
+      console.log(`   Status before pause: running`)
+      
+      // Pause the sandbox - backend returns after state transition is complete
+      const paused = await sandbox.betaPause()
+      expect(paused).toBe(true)
+      console.log(`✅ Sandbox pause completed`)
+      
+      // Verify sandbox is paused (backend guarantees state is paused when API returns)
+      const info = await sandbox.getInfo()
+      expect(info.status).toBe('paused')
+      
+      const isRunningAfter = await sandbox.isRunning()
+      expect(isRunningAfter).toBe(false)
+      console.log(`   Status after pause: ${info.status}`)
+    }, 90000)
+
+    it('should resume a paused sandbox using connect', async () => {
+      console.log('▶️ Testing resume operation via connect...')
+      
+      // Create a fresh sandbox for this test
+      const sandbox = await Sandbox.create('code-interpreter', {
+        timeoutMs: 600000,
+        metadata: { purpose: 'resume-test' }
+      })
+      createdSandboxes.push(sandbox.sandboxId)
+      console.log(`✅ Test sandbox created: ${sandbox.sandboxId}`)
+      
+      // Pause the sandbox first
+      const paused = await sandbox.betaPause()
+      expect(paused).toBe(true)
+      
+      // Verify sandbox is paused (backend guarantees state is paused when API returns)
+      const infoBefore = await sandbox.getInfo()
+      expect(infoBefore.status).toBe('paused')
+      console.log(`   Status before resume: ${infoBefore.status}`)
+      
+      // Resume using connect (unified endpoint) - backend returns after state transition is complete
+      await sandbox.connect()
+      console.log(`✅ Sandbox connection completed (auto-resumed)`)
+      
+      // Verify sandbox is running (backend guarantees state is running when API returns)
+      const infoAfter = await sandbox.getInfo()
+      expect(infoAfter.status).toBe('running')
+      
+      const isRunningAfter = await sandbox.isRunning()
+      expect(isRunningAfter).toBe(true)
+      console.log(`   Status after resume: ${infoAfter.status}`)
+    }, 120000)
+
+    it('should reject pause on already paused sandbox', async () => {
+      console.log('⏸️ Testing double pause rejection...')
+      
+      // Create a fresh sandbox for this test
+      const sandbox = await Sandbox.create('code-interpreter', {
+        timeoutMs: 600000,
+        metadata: { purpose: 'double-pause-test' }
+      })
+      createdSandboxes.push(sandbox.sandboxId)
+      console.log(`✅ Test sandbox created: ${sandbox.sandboxId}`)
+      
+      // Pause the sandbox first
+      const paused = await sandbox.betaPause()
+      expect(paused).toBe(true)
+      
+      // Verify sandbox is paused (backend guarantees state is paused when API returns)
+      const info = await sandbox.getInfo()
+      expect(info.status).toBe('paused')
+      console.log(`   Current status: ${info.status}`)
+      
+      // Try to pause again - should be rejected by backend
+      await expect(sandbox.betaPause()).rejects.toThrow()
+      console.log(`✅ Double pause correctly rejected`)
+      
+      // Verify sandbox is still paused
+      const infoAfter = await sandbox.getInfo()
+      expect(infoAfter.status).toBe('paused')
+      console.log(`   Status after rejected pause: ${infoAfter.status}`)
+    }, 60000)
+
+    it('should resume paused sandbox with timeout update', async () => {
+      console.log('⏸️ Pausing sandbox for timeout update test...')
+      
+      // Create a fresh sandbox for this test
+      const sandbox = await Sandbox.create('code-interpreter', {
+        timeoutMs: 600000,
+        metadata: { purpose: 'timeout-update-test' }
+      })
+      createdSandboxes.push(sandbox.sandboxId)
+      console.log(`✅ Test sandbox created: ${sandbox.sandboxId}`)
+      
+      // Pause the sandbox - backend returns after state transition is complete
+      await sandbox.betaPause()
+      
+      // Verify sandbox is paused (backend guarantees state is paused when API returns)
+      const infoBefore = await sandbox.getInfo()
+      expect(infoBefore.status).toBe('paused')
+      console.log(`   Status before resume: ${infoBefore.status}`)
+      
+      // Resume with new timeout - backend returns after state transition is complete
+      const newTimeoutMs = 900000 // 15 minutes
+      await sandbox.connect({ timeoutMs: newTimeoutMs })
+      console.log(`✅ Sandbox resumed with new timeout: ${newTimeoutMs}ms`)
+      
+      // Verify sandbox is running (backend guarantees state is running when API returns)
+      const infoAfter = await sandbox.getInfo()
+      expect(infoAfter.status).toBe('running')
+      
+      const isRunningAfter = await sandbox.isRunning()
+      expect(isRunningAfter).toBe(true)
+      console.log(`   Status after resume: ${infoAfter.status}`)
+    }, 120000)
+
+    it('should connect to paused sandbox using static connect method', async () => {
+      console.log('⏸️ Pausing sandbox for static connect test...')
+      
+      // Create a fresh sandbox for this test
+      const sandbox = await Sandbox.create('code-interpreter', {
+        timeoutMs: 600000,
+        metadata: { purpose: 'static-connect-test' }
+      })
+      createdSandboxes.push(sandbox.sandboxId)
+      console.log(`✅ Test sandbox created: ${sandbox.sandboxId}`)
+      
+      // Pause the sandbox - backend returns after state transition is complete
+      await sandbox.betaPause()
+      
+      // Verify sandbox is paused (backend guarantees state is paused when API returns)
+      const infoBefore = await sandbox.getInfo()
+      expect(infoBefore.status).toBe('paused')
+      console.log(`   Status before static connect: ${infoBefore.status}`)
+      
+      // Use static connect method (should auto-resume) - backend returns after state transition is complete
+      const connectedSandbox = await Sandbox.connect(sandbox.sandboxId)
+      expect(connectedSandbox.sandboxId).toBe(sandbox.sandboxId)
+      console.log(`✅ Static connect successful (auto-resumed)`)
+      
+      // Verify sandbox is running (backend guarantees state is running when API returns)
+      const isRunning = await connectedSandbox.isRunning()
+      expect(isRunning).toBe(true)
+      
+      const infoAfter = await connectedSandbox.getInfo()
+      expect(infoAfter.status).toBe('running')
+      console.log(`   Status after static connect: ${infoAfter.status}`)
+    }, 120000)
+
+    it('should preserve sandbox functionality after pause/resume', async () => {
+      console.log('🧪 Testing functionality preservation after pause/resume...')
+      
+      // Create a fresh sandbox for this test
+      const sandbox = await Sandbox.create('code-interpreter', {
+        timeoutMs: 600000,
+        metadata: { purpose: 'functionality-preservation-test' }
+      })
+      createdSandboxes.push(sandbox.sandboxId)
+      console.log(`✅ Test sandbox created: ${sandbox.sandboxId}`)
+      
+      // Execute a command before pause
+      const resultBefore = await sandbox.commands.run('echo "test-before-pause"')
+      expect(resultBefore.stdout).toContain('test-before-pause')
+      console.log(`   Command before pause: ✅`)
+      
+      // Pause - backend returns after state transition is complete
+      await sandbox.betaPause()
+      const pausedInfo = await sandbox.getInfo()
+      expect(pausedInfo.status).toBe('paused')
+      console.log(`   Sandbox paused`)
+      
+      // Resume - backend returns after state transition is complete
+      await sandbox.connect()
+      const resumedInfo2 = await sandbox.getInfo()
+      expect(resumedInfo2.status).toBe('running')
+      console.log(`   Sandbox resumed`)
+      
+      // Execute a command after resume
+      const resultAfter = await sandbox.commands.run('echo "test-after-resume"')
+      expect(resultAfter.stdout).toContain('test-after-resume')
+      console.log(`   Command after resume: ✅`)
+      
+      console.log(`✅ Functionality preserved after pause/resume`)
+    }, 120000)
+  })
+
   describe('Error Handling Validation', () => {
     it('should correctly handle non-existent sandbox', async () => {
       console.log('🧪 Testing non-existent sandbox connection...')

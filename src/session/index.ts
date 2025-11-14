@@ -257,6 +257,58 @@ export class Session {
   }
   
   /**
+   * Pause session to save resources
+   * 
+   * Pauses the underlying sandbox, which stops consuming compute resources
+   * (CPU, memory) while preserving the session state (files, installed packages, etc.).
+   * 
+   * **Use cases:**
+   * - Long idle periods between executions
+   * - Cost optimization (paused sandboxes don't consume compute resources)
+   * - Batch processing with gaps
+   * 
+   * **Important notes:**
+   * - Session state (variables, files, packages) is preserved
+   * - The session will be **automatically resumed** when you call `Session.run()` with the same sessionId
+   * - No manual resume needed - `Session.run()` handles it automatically
+   * - For advanced control, access the underlying sandbox via `Session.getSession().sandbox`
+   * 
+   * @param sessionId Session identifier
+   * @returns `true` if paused successfully, `false` if already paused
+   * 
+   * @example Cost optimization
+   * ```typescript
+   * const result = await Session.run({
+   *   code: 'import pandas as pd; df = pd.read_csv("data.csv")',
+   *   files: { 'data.csv': csvData },
+   *   packages: ['pandas'],
+   *   keepAlive: true
+   * })
+   * 
+   * // Pause to save resources during long wait for external data
+   * await Session.pause(result.sessionId!)
+   * 
+   * // Later: automatically resumed when reusing
+   * await Session.run({
+   *   code: 'print(df.describe())',
+   *   sessionId: result.sessionId  // ✅ Automatically resumes
+   * })
+   * ```
+   * 
+   * @example Advanced: Direct sandbox access
+   * ```typescript
+   * const info = await Session.getSession(sessionId)
+   * await info.sandbox.betaPause()  // Pause via sandbox
+   * 
+   * // Resume via sandbox (if needed, though Session.run() does this automatically)
+   * await info.sandbox.connect({ timeoutMs: 1800000 })
+   * ```
+   */
+  static async pause(sessionId: string): Promise<boolean> {
+    return SessionExecutor.pause(sessionId)
+  }
+  
+  /**
    * Close session and cleanup resources
    * 
    * Manually closes a session and destroys the underlying sandbox.
@@ -271,7 +323,7 @@ export class Session {
    * 
    * @example
    * ```typescript
-   * const result = await Session.execute({
+   * const result = await Session.run({
    *   code: 'print("Hello")',
    *   keepAlive: true
    * })

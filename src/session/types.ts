@@ -123,6 +123,29 @@ export interface ExecutionRequest {
   /** Sandbox timeout in milliseconds (default: 600000 = 10 minutes) */
   timeout?: number
   
+  /**
+   * Object storage mount configuration for S3-compatible storage.
+   * 
+   * When provided, the specified S3 bucket will be mounted to the sandbox
+   * at the specified mount point using FUSE.
+   * 
+   * @example
+   * ```ts
+   * await Session.run({
+   *   code: 'print("Hello")',
+   *   objectStorage: {
+   *     uri: 's3://my-bucket/data/',
+   *     mountPoint: '/mnt/oss',
+   *     accessKey: 'YOUR_ACCESS_KEY',
+   *     secretKey: 'YOUR_SECRET_KEY',
+   *     region: 'ap-east-1',
+   *     endpoint: 'https://s3.ap-east-1.amazonaws.com'
+   *   }
+   * })
+   * ```
+   */
+  objectStorage?: import('../sandbox/types').ObjectStorageConfig
+  
   // ===== Output and Progress =====
   /**
    * Files to download after execution

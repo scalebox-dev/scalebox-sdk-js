@@ -1,7 +1,7 @@
 import createClient from 'openapi-fetch'
 import { paths } from './schema.gen'
 import { ConnectionConfig } from '../connectionConfig'
-import { SandboxInfo, SandboxMetrics, SandboxQuery } from '../sandbox/types'
+import { SandboxInfo, SandboxMetrics, SandboxQuery, ObjectStorageConfig } from '../sandbox/types'
 
 /**
  * 键名转换函数 - 前端 camelCase 与后端 snake_case 的双向转换
@@ -132,6 +132,8 @@ export class ApiClient {
     memoryMB?: number
     storageGB?: number
     isAsync?: boolean
+    // 对象存储配置
+    objectStorage?: ObjectStorageConfig
   }): Promise<SandboxInfo> {
     // 使用通用转换函数将 camelCase 转换为后端期望的 snake_case
     const backendRequest = convertKeysToSnakeCase({
@@ -147,7 +149,8 @@ export class ApiClient {
       envVars: request.envVars, // 将转换为 env_vars
       secure: request.secure ?? true, // 默认启用安全
       allowInternetAccess: request.allowInternetAccess ?? true, // 将转换为 allow_internet_access
-      isAsync: request.isAsync ?? false // 将转换为 is_async，默认同步
+      isAsync: request.isAsync ?? false, // 将转换为 is_async，默认同步
+      objectStorage: request.objectStorage // 将转换为 object_storage
     })
     
     const response = await this.client.POST('/v1/sandboxes', {
@@ -194,7 +197,7 @@ export class ApiClient {
       timeout: sandboxData.timeout,
       uptime: sandboxData.uptime || 0,
       
-      // 生命周期管理字段
+      // Lifecycle management fields
       substatus: sandboxData.substatus,
       reason: sandboxData.reason,
       stoppedAt: sandboxData.stoppedAt ? new Date(sandboxData.stoppedAt) : undefined,
@@ -203,7 +206,13 @@ export class ApiClient {
       createdAt: sandboxData.createdAt ? new Date(sandboxData.createdAt) : new Date(),
       updatedAt: sandboxData.updatedAt ? new Date(sandboxData.updatedAt) : new Date(),
       
-      // Kubernetes 部署信息
+      // Pause/Resume tracking fields
+      pausedAt: sandboxData.pausedAt ? new Date(sandboxData.pausedAt) : undefined,
+      resumedAt: sandboxData.resumedAt ? new Date(sandboxData.resumedAt) : undefined,
+      pauseTimeoutAt: sandboxData.pauseTimeoutAt ? new Date(sandboxData.pauseTimeoutAt) : undefined,
+      totalPausedSeconds: sandboxData.totalPausedSeconds,
+      
+      // Kubernetes deployment information
       clusterId: sandboxData.clusterId,
       namespaceId: sandboxData.namespaceId,
       podName: sandboxData.podName,
@@ -214,13 +223,13 @@ export class ApiClient {
       allocationTime: sandboxData.allocationTime ? new Date(sandboxData.allocationTime) : undefined,
       lastPodStatus: sandboxData.lastPodStatus,
       
-      // 状态管理信息
+      // State management information
       deletionInProgress: sandboxData.deletionInProgress || false,
       
-      // 访问令牌
+      // Access token
       envdAccessToken: sandboxData.envdAccessToken,
       
-      // 资源和成本信息
+      // Resource and cost information
       resources: sandboxData.resources || {
         cpu: sandboxData.cpuCount || 1,
         memory: sandboxData.memoryMb || 512,
@@ -232,16 +241,22 @@ export class ApiClient {
         totalCost: 0.0
       },
       
-      // 所有者信息
+      // Owner information
       owner: sandboxData.owner,
       ownerUserId: sandboxData.ownerUserId,
       projectId: sandboxData.projectId,
-      projectName: sandboxData.projectName
+      projectName: sandboxData.projectName,
+      
+      // Object storage information (only uri and mountPoint are returned, credentials are not included for security)
+      objectStorage: sandboxData.objectStorage ? {
+        uri: sandboxData.objectStorage.uri,
+        mountPoint: sandboxData.objectStorage.mountPoint
+      } : undefined
     }
   }
 
   /**
-   * 获取沙箱信息 - 使用正确的路径参数和字段转换
+   * Get sandbox information - using correct path parameters and field conversion
    */
   async getSandbox(sandboxId: string): Promise<SandboxInfo> {
     const response = await this.client.GET('/v1/sandboxes/{sandbox_id}', {
@@ -288,7 +303,7 @@ export class ApiClient {
       timeout: sandboxData.timeout,
       uptime: sandboxData.uptime || 0,
       
-      // 生命周期管理字段
+      // Lifecycle management fields
       substatus: sandboxData.substatus,
       reason: sandboxData.reason,
       stoppedAt: sandboxData.stoppedAt ? new Date(sandboxData.stoppedAt) : undefined,
@@ -297,7 +312,13 @@ export class ApiClient {
       createdAt: sandboxData.createdAt ? new Date(sandboxData.createdAt) : new Date(),
       updatedAt: sandboxData.updatedAt ? new Date(sandboxData.updatedAt) : new Date(),
       
-      // Kubernetes 部署信息
+      // Pause/Resume tracking fields
+      pausedAt: sandboxData.pausedAt ? new Date(sandboxData.pausedAt) : undefined,
+      resumedAt: sandboxData.resumedAt ? new Date(sandboxData.resumedAt) : undefined,
+      pauseTimeoutAt: sandboxData.pauseTimeoutAt ? new Date(sandboxData.pauseTimeoutAt) : undefined,
+      totalPausedSeconds: sandboxData.totalPausedSeconds,
+      
+      // Kubernetes deployment information
       clusterId: sandboxData.clusterId,
       namespaceId: sandboxData.namespaceId,
       podName: sandboxData.podName,
@@ -308,13 +329,13 @@ export class ApiClient {
       allocationTime: sandboxData.allocationTime ? new Date(sandboxData.allocationTime) : undefined,
       lastPodStatus: sandboxData.lastPodStatus,
       
-      // 状态管理信息
+      // State management information
       deletionInProgress: sandboxData.deletionInProgress || false,
       
-      // 访问令牌
+      // Access token
       envdAccessToken: sandboxData.envdAccessToken,
       
-      // 资源和成本信息
+      // Resource and cost information
       resources: sandboxData.resources || {
         cpu: sandboxData.cpuCount || 1,
         memory: sandboxData.memoryMb || 512,
@@ -326,16 +347,23 @@ export class ApiClient {
         totalCost: 0.0
       },
       
-      // 所有者信息
+      // Owner information
       owner: sandboxData.owner,
       ownerUserId: sandboxData.ownerUserId,
       projectId: sandboxData.projectId,
-      projectName: sandboxData.projectName
+      projectName: sandboxData.projectName,
+      
+      // Object storage information (only uri and mountPoint are returned, credentials are not included for security)
+      // processResponse already converts snake_case to camelCase recursively, so object_storage -> objectStorage, mount_point -> mountPoint
+      objectStorage: sandboxData.objectStorage ? {
+        uri: sandboxData.objectStorage.uri,
+        mountPoint: sandboxData.objectStorage.mountPoint
+      } : undefined
     }
   }
 
   /**
-   * 删除沙箱 - 使用正确的路径参数
+   * Delete sandbox - using correct path parameters
    */
   async deleteSandbox(sandboxId: string, force: boolean = true) {
     const response = await this.client.DELETE('/v1/sandboxes/{sandbox_id}', {
@@ -349,7 +377,10 @@ export class ApiClient {
       throw new Error(`Failed to delete sandbox: ${JSON.stringify(response.error)}`)
     }
 
-    return response.data
+    // 处理响应，将 snake_case 转换为 camelCase
+    const processedResponse = this.processResponse(response) as any
+    // DELETE 操作返回 { success: true, data: {...}, message: "..." } 结构
+    return processedResponse.data?.data || processedResponse.data || {}
   }
 
   /**
@@ -377,7 +408,13 @@ export class ApiClient {
 
     // Process response and convert snake_case to camelCase
     const processedResponse = this.processResponse(response) as any
-    return processedResponse.data?.data || processedResponse.data
+    const executeData = processedResponse.data?.data
+    
+    if (!executeData) {
+      throw new Error('Invalid response: missing execute data')
+    }
+    
+    return executeData
   }
 
   /**
@@ -402,7 +439,11 @@ export class ApiClient {
 
     // Process response and convert snake_case to camelCase
     const processedResponse = this.processResponse(response) as any
-    const contextData = processedResponse.data?.data || processedResponse.data
+    const contextData = processedResponse.data?.data
+    
+    if (!contextData) {
+      throw new Error('Invalid response: missing context data')
+    }
     
     return {
       id: contextData.id || contextData.context_id || `context-${Date.now()}`,
@@ -427,7 +468,11 @@ export class ApiClient {
 
     // Process response and convert snake_case to camelCase
     const processedResponse = this.processResponse(response) as any
-    const contextData = processedResponse.data?.data || processedResponse.data
+    const contextData = processedResponse.data?.data
+    
+    if (!contextData) {
+      throw new Error('Invalid response: missing context data')
+    }
     
     return {
       id: contextData.id || contextData.context_id || contextId,
@@ -490,7 +535,7 @@ export class ApiClient {
       timeout: sandbox.timeout,
       uptime: sandbox.uptime || 0,
       
-      // 生命周期管理字段
+      // Lifecycle management fields
       substatus: sandbox.substatus,
       reason: sandbox.reason,
       stoppedAt: sandbox.stoppedAt ? new Date(sandbox.stoppedAt) : undefined,
@@ -499,7 +544,13 @@ export class ApiClient {
       createdAt: sandbox.createdAt ? new Date(sandbox.createdAt) : new Date(),
       updatedAt: sandbox.updatedAt ? new Date(sandbox.updatedAt) : new Date(),
       
-      // Kubernetes 部署信息
+      // Pause/Resume tracking fields
+      pausedAt: sandbox.pausedAt ? new Date(sandbox.pausedAt) : undefined,
+      resumedAt: sandbox.resumedAt ? new Date(sandbox.resumedAt) : undefined,
+      pauseTimeoutAt: sandbox.pauseTimeoutAt ? new Date(sandbox.pauseTimeoutAt) : undefined,
+      totalPausedSeconds: sandbox.totalPausedSeconds,
+      
+      // Kubernetes deployment information
       clusterId: sandbox.clusterId,
       namespaceId: sandbox.namespaceId,
       podName: sandbox.podName,
@@ -532,7 +583,14 @@ export class ApiClient {
       owner: sandbox.owner,
       ownerUserId: sandbox.ownerUserId || sandbox.owner_user_id,
       projectId: sandbox.projectId || sandbox.project_id,
-      projectName: sandbox.projectName || sandbox.project_name
+      projectName: sandbox.projectName || sandbox.project_name,
+      
+      // Object storage information (only uri and mountPoint are returned, credentials are not included for security)
+      // processResponse already converts snake_case to camelCase recursively, so object_storage -> objectStorage, mount_point -> mountPoint
+      objectStorage: sandbox.objectStorage ? {
+        uri: sandbox.objectStorage.uri,
+        mountPoint: sandbox.objectStorage.mountPoint
+      } : undefined
     }))
 
     return {
@@ -555,7 +613,7 @@ export class ApiClient {
 
     // Process response and convert snake_case to camelCase
     const processedResponse = this.processResponse(response) as any
-    const metricsData = processedResponse.data?.data || processedResponse.data
+    const metricsData = processedResponse.data?.data
     
     if (!metricsData) {
       throw new Error('Invalid response: missing metrics data')
@@ -573,7 +631,7 @@ export class ApiClient {
   }
 
   /**
-   * 暂停沙箱
+   * Pause sandbox
    */
   async pauseSandbox(sandboxId: string): Promise<void> {
     const response = await this.client.POST('/v1/sandboxes/{sandbox_id}/pause' as any, {
@@ -586,15 +644,22 @@ export class ApiClient {
   }
 
   /**
-   * 恢复沙箱
-   * @param sandboxId 沙箱 ID
-   * @param timeoutMs 恢复后的超时时间（毫秒），避免因暂停时间过长导致立即超时
+   * @deprecated This method is deprecated, please use {@link connectSandbox} instead
+   * 
+   * Resume sandbox
+   * @param sandboxId sandbox ID
+   * @param timeoutMs optional timeout in milliseconds
+   * Note: backend resume endpoint currently does not accept timeout parameter, timeout is automatically calculated by state machine based on pause duration
+   * This parameter is reserved for future possible extensions and is currently ignored
+   * 
+   * @see {@link connectSandbox} - Recommended unified connect endpoint that automatically handles running or paused sandboxes
    */
-  async resumeSandbox(sandboxId: string, timeoutMs: number): Promise<void> {
-    const timeoutSeconds = Math.floor(timeoutMs / 1000) // Convert ms to seconds
+  async resumeSandbox(sandboxId: string, timeoutMs?: number): Promise<void> {
+    // Backend resume endpoint does not accept timeout parameter, timeout is automatically calculated by state machine
+    // timeoutMs parameter is reserved for future possible extensions, but is not currently sent to backend
     const response = await this.client.POST('/v1/sandboxes/{sandbox_id}/resume' as any, {
-      params: { path: { sandbox_id: sandboxId } },
-      body: { timeout: timeoutSeconds }
+      params: { path: { sandbox_id: sandboxId } }
+      // Note: backend does not accept body parameters, timeout is automatically calculated by state machine based on pause duration
     })
 
     if (response.error) {
@@ -603,7 +668,7 @@ export class ApiClient {
   }
 
   /**
-   * 更新沙箱超时时间
+   * Update sandbox timeout
    */
   async updateSandboxTimeout(sandboxId: string, timeoutMs: number): Promise<void> {
     const timeoutSeconds = Math.floor(timeoutMs / 1000) // Convert ms to seconds
@@ -615,5 +680,56 @@ export class ApiClient {
     if (response.error) {
       throw new Error(`Failed to update sandbox timeout: ${JSON.stringify(response.error)}`)
     }
+  }
+
+  /**
+   * Connect to sandbox (unified endpoint)
+   * If sandbox is running, returns sandbox info immediately
+   * If sandbox is paused, automatically resumes and waits for completion
+   * @param sandboxId sandbox ID
+   * @param timeoutMs optional timeout in milliseconds, if provided updates sandbox timeout
+   * @returns sandbox information
+   */
+  async connectSandbox(sandboxId: string, timeoutMs?: number): Promise<SandboxInfo> {
+    const body: { timeout?: number } = {}
+    if (timeoutMs !== undefined) {
+      body.timeout = Math.floor(timeoutMs / 1000) // Convert ms to seconds
+    }
+
+    const response = await this.client.POST('/v1/sandboxes/{sandbox_id}/connect' as any, {
+      params: { path: { sandbox_id: sandboxId } },
+      body: Object.keys(body).length > 0 ? body : undefined
+    })
+
+    if (response.error) {
+      throw new Error(`Failed to connect to sandbox: ${JSON.stringify(response.error)}`)
+    }
+
+    // Process response, convert snake_case to camelCase
+    const processedResponse = this.processResponse(response) as any
+    const sandboxData = processedResponse.data?.data
+    
+    if (!sandboxData) {
+      throw new Error('Invalid response: missing sandbox data')
+    }
+    
+    // Since processResponse has already converted keys, use camelCase fields directly
+    const sandboxInfo: SandboxInfo = {
+      sandboxId: sandboxData.sandboxId || sandboxData.sandbox_id,
+      templateId: sandboxData.templateId || sandboxData.template_id,
+      name: sandboxData.name,
+      metadata: sandboxData.metadata || {},
+      startedAt: sandboxData.startedAt ? new Date(sandboxData.startedAt) : new Date(),
+      endAt: sandboxData.endAt ? new Date(sandboxData.endAt) : new Date(),
+      status: (sandboxData.status || sandboxData.state || 'running') as SandboxInfo['status'],
+      cpuCount: sandboxData.cpuCount || sandboxData.cpu_count || 1,
+      memoryMB: sandboxData.memoryMB || sandboxData.memory_mb || 512,
+      envdVersion: sandboxData.envdVersion || sandboxData.envd_version || '0.1.0',
+      sandboxDomain: sandboxData.sandboxDomain || sandboxData.domain,
+      envdAccessToken: sandboxData.envdAccessToken || sandboxData.envd_access_token,
+      envs: sandboxData.envs || sandboxData.env_vars || {}
+    }
+    
+    return sandboxInfo
   }
 }

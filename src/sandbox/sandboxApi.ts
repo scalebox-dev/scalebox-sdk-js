@@ -1,7 +1,7 @@
 import { ApiClient } from '../api'
 import { ConnectionConfig, DEFAULT_SANDBOX_TIMEOUT_MS } from '../connectionConfig'
 import { ScaleboxError, SandboxError, NotFoundError } from '../errors'
-import type { SandboxInfo } from './types'
+import type { SandboxInfo, ObjectStorageConfig } from './types'
 
 /**
  * Options for request to the Sandbox API.
@@ -71,6 +71,28 @@ export interface SandboxOpts extends SandboxApiOpts {
    * @default false
    */
   autoPause?: boolean
+
+  /**
+   * Object storage mount configuration for S3-compatible storage.
+   * 
+   * When provided, the specified S3 bucket will be mounted to the sandbox
+   * at the specified mount point using FUSE.
+   * 
+   * @example
+   * ```ts
+   * const sandbox = await Sandbox.create('base', {
+   *   objectStorage: {
+   *     uri: 's3://my-bucket/data/',
+   *     mountPoint: '/mnt/oss',
+   *     accessKey: 'YOUR_ACCESS_KEY',
+   *     secretKey: 'YOUR_SECRET_KEY',
+   *     region: 'ap-east-1',
+   *     endpoint: 'https://s3.ap-east-1.amazonaws.com'
+   *   }
+   * })
+   * ```
+   */
+  objectStorage?: ObjectStorageConfig
 }
 
 export type SandboxBetaCreateOpts = SandboxOpts & {
@@ -328,7 +350,7 @@ export class SandboxApi {
     const client = new ApiClient(config, sandboxId)
 
     try {
-      // 直接返回统一的SandboxInfo结构
+      // Return unified SandboxInfo structure directly
       const sandboxInfo = await client.getSandbox(sandboxId)
       
       return {
@@ -398,7 +420,7 @@ export class SandboxApi {
     }
 
     try {
-      // 使用标准的 camelCase 接口
+      // Use standard camelCase interface
       const sandboxInfo = await client.createSandbox({
         template: template,
         timeout: timeoutSeconds,
@@ -407,15 +429,16 @@ export class SandboxApi {
         allowInternetAccess: opts?.allowInternetAccess ?? true,
         secure: opts?.secure ?? true,
         autoPause: opts?.autoPause ?? false,
-        isAsync: false // 默认同步创建
+        isAsync: false, // Default to synchronous creation
+        objectStorage: opts?.objectStorage // Pass through object storage configuration
       })
 
-      // sandboxDomain 必须由 API 返回，不允许降级
+      // sandboxDomain must be returned by API, no fallback allowed
       if (!sandboxInfo.sandboxDomain) {
         throw new ScaleboxError('Sandbox creation failed: sandboxDomain not returned from API')
       }
 
-      // envdAccessToken 必须由 API 返回，用于 gRPC 认证
+      // envdAccessToken must be returned by API, used for gRPC authentication
       if (!sandboxInfo.envdAccessToken) {
         throw new ScaleboxError('Sandbox creation failed: envdAccessToken not returned from API')
       }
@@ -427,6 +450,31 @@ export class SandboxApi {
     }
   }
 
+  /**
+   * @deprecated This method is deprecated, please use {@link connectSandbox} instead
+   * 
+   * Resume a paused sandbox
+   * 
+   * It is recommended to use {@link connectSandbox} method, which can:
+   * - Automatically handle running or paused sandboxes
+   * - Support optional timeout parameter
+   * - Provide a cleaner API
+   * 
+   * @param sandboxId sandbox ID
+   * @param opts connection options
+   * @returns `true` if resume succeeded
+   * 
+   * @example
+   * ```ts
+   * // ❌ Not recommended: using deprecated resumeSandbox
+   * await SandboxApi.resumeSandbox(sandboxId)
+   * 
+   * // ✅ Recommended: use unified connect endpoint
+   * await SandboxApi.connectSandbox(sandboxId, { timeoutMs: 600000 })
+   * ```
+   * 
+   * @see {@link connectSandbox} - Recommended unified connect endpoint
+   */
   static async resumeSandbox(
     sandboxId: string,
     opts?: SandboxConnectOpts
@@ -441,15 +489,58 @@ export class SandboxApi {
     })
     const client = new ApiClient(config, sandboxId)
 
-    // 恢复时需要传入 timeout，避免因暂停时间过长导致恢复后立即超时
-    const timeoutMs = opts?.timeoutMs ?? DEFAULT_SANDBOX_TIMEOUT_MS
-
     try {
-      await client.resumeSandbox(sandboxId, timeoutMs)
+      // Note: backend resume endpoint does not accept timeout parameter
+      // Timeout is automatically calculated by backend state machine based on pause duration
+      // If you need to set timeout, use connect endpoint or setTimeout method
+      await client.resumeSandbox(sandboxId)
       return true
     } catch (error) {
       if (error instanceof NotFoundError) {
         throw new NotFoundError(`Paused sandbox ${sandboxId} not found`)
+      }
+      throw error
+    }
+  }
+
+  /**
+   * Connect to a sandbox using the unified connect endpoint.
+   * If the sandbox is running, returns sandbox info immediately.
+   * If the sandbox is paused, automatically resumes it and waits for completion.
+   * 
+   * This is the recommended way to connect to sandboxes, as it handles both
+   * running and paused states automatically.
+   * 
+   * @param sandboxId sandbox ID
+   * @param opts connection options
+   * @returns sandbox information with sandboxDomain and envdAccessToken
+   */
+  static async connectSandbox(
+    sandboxId: string,
+    opts?: SandboxConnectOpts
+  ): Promise<SandboxInfo> {
+    const config = new ConnectionConfig({
+      apiKey: opts?.apiKey,
+      apiUrl: opts?.apiUrl,
+      debug: opts?.debug,
+      domain: opts?.domain,
+      requestTimeoutMs: opts?.requestTimeoutMs,
+      headers: opts?.headers
+    })
+    const client = new ApiClient(config, sandboxId)
+
+    try {
+      // Use unified endpoint: if sandbox is running, return immediately; if paused, automatically resume
+      // timeout is optional: if not provided, backend will preserve existing timeout or use default value
+      const sandboxInfo = await client.connectSandbox(
+        sandboxId,
+        opts?.timeoutMs
+      )
+
+      return sandboxInfo
+    } catch (error) {
+      if (error instanceof NotFoundError) {
+        throw new NotFoundError(`Sandbox ${sandboxId} not found`)
       }
       throw error
     }

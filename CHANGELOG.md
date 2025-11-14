@@ -1,3 +1,29 @@
+# [Unreleased]
+
+### Added
+
+* **Signed URL Support**: Added signed URL functionality for secure file download/upload
+  * Added `signature.ts` module with SHA256-based signature generation
+  * Integrated signature generation into `downloadUrl` and `uploadUrl` methods
+  * Generate signature automatically when `envdAccessToken` is available
+  * Support optional expiration time in UTC timezone
+  * Maintain backward compatibility for non-signed URLs
+
+* **Pause and Resume Functionality**: Added pause and resume support for sandboxes
+  * Added `pause()` method to Session class
+  * Added `connect()` method with automatic resume for paused sandboxes
+  * Added pause/resume time tracking fields to SandboxInfo (pausedAt, resumedAt, pauseTimeoutAt, totalPausedSeconds)
+  * Updated status type to include 'pausing' and 'resuming' states
+  * Support automatic resume when reusing paused sessions
+
+* **Object Storage Mount Support**: Added support for mounting S3-compatible object storage to sandboxes using FUSE
+  * Added `ObjectStorageConfig` interface for configuring object storage mounts
+  * Added `ObjectStorageInfo` interface for response data (credentials excluded for security)
+  * Added `objectStorage` parameter to `Sandbox.create()`, `SandboxApi.createSandbox()`, and `Session.run()`
+  * Object storage is automatically mounted at the specified mount point when sandbox is created
+  * Response includes `objectStorage` field with `uri` and `mountPoint` information
+  * Full support in both low-level API (`Sandbox`) and high-level API (`Session`)
+
 # [3.4.0](https://github.com/scalebox-dev/scalebox-sdk-js/compare/v3.3.0...v3.4.0) (2025-11-12)
 
 

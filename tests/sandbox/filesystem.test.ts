@@ -861,11 +861,38 @@ describe('Filesystem Handlers', () => {
       // Create watcher
       const watcher = await sandbox.files.createWatcher(watchDirPath)
       
+      // Verify watcher structure in detail
+      expect(watcher).toBeDefined()
+      expect(watcher).toHaveProperty('id')
+      expect(watcher).toHaveProperty('getEvents')
+      expect(watcher).toHaveProperty('remove')
+      
+      // Verify id property
       expect(watcher.id).toBeDefined()
       expect(typeof watcher.id).toBe('string')
+      expect(watcher.id.length).toBeGreaterThan(0)
+      
+      // Print watcher structure for debugging
+      console.log('Watcher structure:', {
+        id: watcher.id,
+        hasGetEvents: typeof watcher.getEvents === 'function',
+        hasRemove: typeof watcher.remove === 'function',
+        watcherKeys: Object.keys(watcher)
+      })
+      
+      // Verify getEvents method
       expect(watcher.getEvents).toBeDefined()
-      expect(watcher.remove).toBeDefined()
       expect(typeof watcher.getEvents).toBe('function')
+      const eventsPromise = watcher.getEvents()
+      expect(eventsPromise).toBeInstanceOf(Promise)
+      const events = await eventsPromise
+      expect(Array.isArray(events)).toBe(true)
+      
+      // Print events for debugging
+      console.log('Initial events from watcher:', JSON.stringify(events, null, 2))
+      
+      // Verify remove method
+      expect(watcher.remove).toBeDefined()
       expect(typeof watcher.remove).toBe('function')
       
       // Clean up watcher
@@ -890,11 +917,26 @@ describe('Filesystem Handlers', () => {
       // Create recursive watcher using watchDir (which works)
       const watchStream = sandbox.files.watchDir(watchDirPath, { recursive: true })
       
+      // Verify watchStream structure in detail
       expect(watchStream).toBeDefined()
+      expect(watchStream[Symbol.asyncIterator]).toBeDefined()
       expect(typeof watchStream[Symbol.asyncIterator]).toBe('function')
       
+      // Verify it's an async generator
+      const iterator = watchStream[Symbol.asyncIterator]()
+      expect(iterator).toBeDefined()
+      expect(iterator).toHaveProperty('next')
+      expect(typeof iterator.next).toBe('function')
+      
+      // Print watchStream structure for debugging
+      console.log('watchStream structure:', {
+        hasAsyncIterator: typeof watchStream[Symbol.asyncIterator] === 'function',
+        iteratorType: typeof iterator,
+        hasNext: typeof iterator.next === 'function'
+      })
+      
       // Clean up watcher
-      watchStream.return()
+      await watchStream.return()
     }, timeout)
 
     test('should get watcher events', async () => {
@@ -918,13 +960,42 @@ describe('Filesystem Handlers', () => {
       // Get events
       const events = await watcher.getEvents()
       
+      // Print events for debugging
+      console.log('Watcher events:', JSON.stringify(events, null, 2))
+      console.log('Events count:', events.length)
+      
+      // Verify events array structure
       expect(Array.isArray(events)).toBe(true)
+      
       // Events might be empty or contain file creation events
       if (events.length > 0) {
         const event = events[0]
-        expect(event.type).toMatch(/^(create|write|remove|rename|chmod)$/)
+        
+        // Print first event structure for debugging
+        console.log('First event structure:', JSON.stringify(event, null, 2))
+        console.log('First event keys:', Object.keys(event))
+        
+        // Verify event structure in detail
+        expect(event).toBeDefined()
+        expect(event).toHaveProperty('type')
+        expect(event).toHaveProperty('name')
+        expect(event).toHaveProperty('path')
+        
+        // Verify event.type
+        expect(event.type).toBeDefined()
+        expect(typeof event.type).toBe('string')
+        expect(['create', 'write', 'remove', 'rename', 'chmod']).toContain(event.type)
+        
+        // Verify event.name
         expect(event.name).toBeDefined()
         expect(typeof event.name).toBe('string')
+        expect(event.name.length).toBeGreaterThan(0)
+        
+        // Verify event.path
+        expect(event.path).toBeDefined()
+        expect(typeof event.path).toBe('string')
+        expect(event.path).toContain(watchDirPath)
+        expect(event.path).toContain(event.name)
       }
       
       // Clean up watcher
@@ -966,6 +1037,11 @@ describe('Filesystem Handlers', () => {
       // Start watching directory
       const watchStream = sandbox.files.watchDir(watchDirPath)
       
+      // Verify watchStream structure
+      expect(watchStream).toBeDefined()
+      expect(watchStream[Symbol.asyncIterator]).toBeDefined()
+      expect(typeof watchStream[Symbol.asyncIterator]).toBe('function')
+      
       // Create a file to trigger event
       await sandbox.files.write(testFilePath, 'Test content')
       
@@ -975,6 +1051,31 @@ describe('Filesystem Handlers', () => {
       
       try {
         for await (const event of watchStream) {
+          // Print event for debugging
+          console.log('Stream event received:', JSON.stringify(event, null, 2))
+          console.log('Event keys:', Object.keys(event))
+          
+          // Verify event structure in detail
+          expect(event).toBeDefined()
+          expect(event).toHaveProperty('type')
+          expect(event).toHaveProperty('name')
+          expect(event).toHaveProperty('path')
+          
+          // Verify event.type
+          expect(event.type).toBeDefined()
+          expect(typeof event.type).toBe('string')
+          expect(['create', 'write', 'remove', 'rename', 'chmod']).toContain(event.type)
+          
+          // Verify event.name
+          expect(event.name).toBeDefined()
+          expect(typeof event.name).toBe('string')
+          expect(event.name.length).toBeGreaterThan(0)
+          
+          // Verify event.path
+          expect(event.path).toBeDefined()
+          expect(typeof event.path).toBe('string')
+          expect(event.path).toContain(watchDirPath)
+          
           events.push(event)
           if (events.length >= 1) {
             break // Stop after getting one event
@@ -982,10 +1083,23 @@ describe('Filesystem Handlers', () => {
         }
       } catch (error) {
         // Stream might end or timeout, which is expected
+        console.log('Stream error (expected):', error)
       }
+      
+      // Print all collected events
+      console.log('All collected events:', JSON.stringify(events, null, 2))
+      console.log('Total events collected:', events.length)
       
       // Events might be empty due to timing, but stream should work
       expect(Array.isArray(events)).toBe(true)
+      if (events.length > 0) {
+        // Verify first event structure
+        const firstEvent = events[0]
+        console.log('First event details:', JSON.stringify(firstEvent, null, 2))
+        expect(firstEvent.type).toBeDefined()
+        expect(firstEvent.name).toBeDefined()
+        expect(firstEvent.path).toBeDefined()
+      }
     }, timeout)
 
     test('should watch directory recursively with streaming', async () => {
@@ -1002,6 +1116,11 @@ describe('Filesystem Handlers', () => {
       // Start watching directory recursively
       const watchStream = sandbox.files.watchDir(watchDirPath, { recursive: true })
       
+      // Verify watchStream structure
+      expect(watchStream).toBeDefined()
+      expect(watchStream[Symbol.asyncIterator]).toBeDefined()
+      expect(typeof watchStream[Symbol.asyncIterator]).toBe('function')
+      
       // Create a file in nested directory to trigger event
       await sandbox.files.write(testFilePath, 'Test content')
       
@@ -1011,6 +1130,31 @@ describe('Filesystem Handlers', () => {
       
       try {
         for await (const event of watchStream) {
+          // Print event for debugging
+          console.log('Recursive stream event received:', JSON.stringify(event, null, 2))
+          console.log('Recursive event keys:', Object.keys(event))
+          
+          // Verify event structure in detail
+          expect(event).toBeDefined()
+          expect(event).toHaveProperty('type')
+          expect(event).toHaveProperty('name')
+          expect(event).toHaveProperty('path')
+          
+          // Verify event.type
+          expect(event.type).toBeDefined()
+          expect(typeof event.type).toBe('string')
+          expect(['create', 'write', 'remove', 'rename', 'chmod']).toContain(event.type)
+          
+          // Verify event.name
+          expect(event.name).toBeDefined()
+          expect(typeof event.name).toBe('string')
+          expect(event.name.length).toBeGreaterThan(0)
+          
+          // Verify event.path
+          expect(event.path).toBeDefined()
+          expect(typeof event.path).toBe('string')
+          expect(event.path).toContain(watchDirPath)
+          
           events.push(event)
           if (events.length >= 1) {
             break // Stop after getting one event
@@ -1018,10 +1162,25 @@ describe('Filesystem Handlers', () => {
         }
       } catch (error) {
         // Stream might end or timeout, which is expected
+        console.log('Recursive stream error (expected):', error)
       }
+      
+      // Print all collected events
+      console.log('All collected recursive events:', JSON.stringify(events, null, 2))
+      console.log('Total recursive events collected:', events.length)
       
       // Events might be empty due to timing, but stream should work
       expect(Array.isArray(events)).toBe(true)
+      if (events.length > 0) {
+        // Verify first event structure
+        const firstEvent = events[0]
+        console.log('First recursive event details:', JSON.stringify(firstEvent, null, 2))
+        expect(firstEvent.type).toBeDefined()
+        expect(firstEvent.name).toBeDefined()
+        expect(firstEvent.path).toBeDefined()
+        // For recursive watch, path should contain nested directory
+        expect(firstEvent.path).toContain('nested')
+      }
     }, timeout)
 
     test('should use custom user in watcher creation', async () => {
@@ -1331,5 +1490,209 @@ describe('Filesystem Handlers', () => {
       // 7. Clean up
       await sandbox.files.remove(baseDir)
     }, timeout * 2) // Double timeout for large file operations
+  })
+
+  describe('Download URL with Signature', () => {
+    test('should generate signed download URL and download file successfully', async () => {
+      const testFilePath = '/tmp/test-download-url.txt'
+      const testContent = 'This is test content for download URL verification.'
+      const localDownloadPath = path.join(tempDir, 'downloaded-via-url.txt')
+      
+      await waitForSandboxHealth(sandbox)
+      
+      // 1. Create a file in sandbox
+      await sandbox.files.write(testFilePath, testContent)
+      
+      // 2. Verify file exists
+      const fileInfo = await sandbox.files.stat(testFilePath)
+      expect(fileInfo.name).toBe('test-download-url.txt')
+      expect(fileInfo.type).toBe('file')
+      
+      // 3. Generate signed download URL with expiration
+      if (!sandbox.envdAccessToken) {
+        console.log('⚠️ Skipping signed URL test: envdAccessToken not available')
+        return
+      }
+      
+      const expirationSeconds = 3600
+      const downloadUrl = await sandbox.downloadUrl(testFilePath, {
+        useSignatureExpiration: expirationSeconds
+      })
+      
+      // Print download URL for debugging
+      console.log('📥 Generated Download URL:', downloadUrl)
+      console.log('🔑 envdAccessToken:', sandbox.envdAccessToken ? `${sandbox.envdAccessToken.substring(0, 20)}...` : 'undefined')
+      console.log('🔑 Full envdAccessToken:', sandbox.envdAccessToken || 'undefined')
+      
+      // Parse and print URL parameters
+      const urlObj = new URL(downloadUrl)
+      console.log('📋 URL Parameters:')
+      console.log('  - Path:', urlObj.pathname)
+      console.log('  - Signature:', urlObj.searchParams.get('signature'))
+      console.log('  - Expiration:', urlObj.searchParams.get('signature_expiration'))
+      console.log('  - Username:', urlObj.searchParams.get('username'))
+      
+      // Extract path from URL for signature verification
+      const urlPath = urlObj.pathname // /download/tmp/test-download-url.txt
+      const extractedPath = urlPath.replace('/download', '') // /tmp/test-download-url.txt
+      console.log('  - Extracted path (for signature):', extractedPath)
+      
+      // 4. Verify URL format
+      expect(downloadUrl).toContain(sandbox.sandboxDomain)
+      expect(downloadUrl).toContain('/download/')
+      expect(downloadUrl).toContain('tmp/test-download-url.txt')
+      expect(downloadUrl).toContain('signature=')
+      expect(downloadUrl).toContain('signature_expiration=')
+      expect(downloadUrl).toContain('username=')
+      
+      // 5. Parse URL to verify parameters (urlObj already declared above)
+      expect(urlObj.searchParams.has('signature')).toBe(true)
+      expect(urlObj.searchParams.has('signature_expiration')).toBe(true)
+      expect(urlObj.searchParams.has('username')).toBe(true)
+      
+      const signature = urlObj.searchParams.get('signature')
+      expect(signature).toMatch(/^v1_[A-Za-z0-9+/]+$/)
+      
+      const expiration = urlObj.searchParams.get('signature_expiration')
+      expect(expiration).toBeTruthy()
+      const expirationNum = parseInt(expiration!, 10)
+      expect(expirationNum).toBeGreaterThan(Math.floor(Date.now() / 1000))
+      
+      // 6. Download file using the signed URL
+      // Signed URL should work without any headers - signature is in the URL itself
+      const response = await fetch(downloadUrl)
+      
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('❌ Download failed:', response.status, response.statusText)
+        console.error('Error details:', errorText)
+        console.error('Download URL:', downloadUrl)
+        throw new Error(`Failed to download file: ${response.status} ${response.statusText} - ${errorText}`)
+      }
+      
+      expect(response.ok).toBe(true)
+      
+      // 7. Save downloaded content to local file
+      const downloadedContent = await response.text()
+      fs.writeFileSync(localDownloadPath, downloadedContent)
+      
+      // 8. Verify downloaded content matches original
+      expect(downloadedContent).toBe(testContent)
+      
+      // 9. Verify local file was created correctly
+      expect(fs.existsSync(localDownloadPath)).toBe(true)
+      const localFileContent = fs.readFileSync(localDownloadPath, 'utf-8')
+      expect(localFileContent).toBe(testContent)
+      
+      console.log('✅ Signed download URL test passed')
+      console.log('📥 Download URL:', downloadUrl)
+      console.log('📊 File size:', downloadedContent.length, 'bytes')
+    }, timeout)
+
+    test('should generate download URL without signature (backward compatibility)', async () => {
+      const testFilePath = '/tmp/test-download-url-no-sig.txt'
+      const testContent = 'Test content for non-signed URL'
+      
+      await waitForSandboxHealth(sandbox)
+      
+      // 1. Create a file in sandbox
+      await sandbox.files.write(testFilePath, testContent)
+      
+      // 2. Generate download URL without signature
+      const downloadUrl = await sandbox.downloadUrl(testFilePath)
+      
+      // 3. Verify URL format (should not contain signature parameters)
+      expect(downloadUrl).toContain(sandbox.sandboxDomain)
+      expect(downloadUrl).toContain('/download/')
+      expect(downloadUrl).toContain('tmp/test-download-url-no-sig.txt')
+      expect(downloadUrl).not.toContain('signature=')
+      expect(downloadUrl).not.toContain('signature_expiration=')
+      expect(downloadUrl).not.toContain('username=')
+      
+      console.log('✅ Non-signed download URL test passed')
+      console.log('📥 Download URL:', downloadUrl)
+    }, timeout)
+
+    test('should handle different path formats in download URL', async () => {
+      const testPaths = [
+        '/tmp/path-with-leading-slash.txt',
+        'tmp/path-without-leading-slash.txt',
+        '//tmp/path-with-double-slash.txt'
+      ]
+      
+      await waitForSandboxHealth(sandbox)
+      
+      // Create test files
+      for (const testPath of testPaths) {
+        const normalizedPath = testPath.startsWith('/') ? testPath : `/${testPath}`
+        const cleanPath = normalizedPath.replace(/^\/+/, '')
+        const actualPath = `/${cleanPath}`
+        
+        await sandbox.files.write(actualPath, `Content for ${testPath}`)
+        
+        // Generate signed download URL
+        if (sandbox.envdAccessToken) {
+          const downloadUrl = await sandbox.downloadUrl(testPath, {
+            useSignatureExpiration: 3600
+          })
+          
+          // Verify URL contains the correct path
+          expect(downloadUrl).toContain(sandbox.sandboxDomain)
+          expect(downloadUrl).toContain('/download/')
+          expect(downloadUrl).toContain('signature=')
+          
+          // Download and verify content
+          const response = await fetch(downloadUrl)
+          expect(response.ok).toBe(true)
+          const content = await response.text()
+          expect(content).toBe(`Content for ${testPath}`)
+        }
+      }
+      
+      console.log('✅ Different path formats test passed')
+    }, timeout)
+
+    test('should download binary file using signed URL', async () => {
+      const testFilePath = '/tmp/test-binary-download.bin'
+      // Create binary content (PNG header)
+      const binaryContent = Buffer.from([
+        0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, // PNG signature
+        0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52, // IHDR chunk
+      ])
+      const localDownloadPath = path.join(tempDir, 'downloaded-binary.bin')
+      
+      await waitForSandboxHealth(sandbox)
+      
+      // 1. Create binary file in sandbox
+      await sandbox.files.write(testFilePath, binaryContent.buffer)
+      
+      // 2. Generate signed download URL
+      if (!sandbox.envdAccessToken) {
+        console.log('⚠️ Skipping binary download test: envdAccessToken not available')
+        return
+      }
+      
+      const downloadUrl = await sandbox.downloadUrl(testFilePath, {
+        useSignatureExpiration: 3600
+      })
+      
+      // 3. Download binary file using the signed URL
+      const response = await fetch(downloadUrl)
+      expect(response.ok).toBe(true)
+      
+      // 4. Get binary content
+      const arrayBuffer = await response.arrayBuffer()
+      const downloadedBinary = Buffer.from(arrayBuffer)
+      
+      // 5. Save to local file
+      fs.writeFileSync(localDownloadPath, downloadedBinary)
+      
+      // 6. Verify binary content matches
+      expect(Buffer.compare(binaryContent, downloadedBinary)).toBe(0)
+      expect(downloadedBinary.length).toBe(binaryContent.length)
+      
+      console.log('✅ Binary file download via signed URL test passed')
+      console.log('📊 Binary file size:', downloadedBinary.length, 'bytes')
+    }, timeout)
   })
 })
