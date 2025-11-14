@@ -305,12 +305,14 @@ describe('Sandbox Connect - Comprehensive Test Suite', () => {
       // Test invalid timeout (too short)
       await expect(
         Sandbox.connect(testSandbox.sandboxId, { timeoutMs: 30000 })
-      ).rejects.toThrow('Timeout must be at least 60 seconds')
+      ).rejects.toThrow(/timeout must be at least 60 seconds/i)
       
-      // Test invalid timeout (too long)
+      // Test invalid timeout (too long - exceeds plan limit)
+      // Different plans have different max timeout limits (e.g., 24h, 48h)
+      // Using 50 hours (180000000 ms) which should exceed most plan limits
       await expect(
-        Sandbox.connect(testSandbox.sandboxId, { timeoutMs: 4000000 })
-      ).rejects.toThrow('Timeout cannot exceed 3600 seconds')
+        Sandbox.connect(testSandbox.sandboxId, { timeoutMs: 180000000 })
+      ).rejects.toThrow(/timeout.*exceed|exceed.*timeout|maximum.*timeout/i)
       
       console.log(`✅ Connection options validation working correctly`)
     }, DEFAULT_TIMEOUT)
