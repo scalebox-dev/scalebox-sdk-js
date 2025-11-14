@@ -1,6 +1,6 @@
 {
   "name": "@scalebox/sdk",
-  "version": "3.4.0",
+  "version": "3.5.0",
   "description": "A JavaScript SDK for executing multi-language code in controlled sandboxes, supporting both synchronous and asynchronous modes, as well as multi-language kernels (Python, R, Node.js, Deno/TypeScript, Java/IJAVA, Bash)",
   "homepage": "https://scalebox.dev",
   "license": "MIT",

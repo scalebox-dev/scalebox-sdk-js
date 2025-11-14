@@ -1,3 +1,12 @@
+# [3.5.0](https://github.com/scalebox-dev/scalebox-sdk-js/compare/v3.4.0...v3.5.0) (2025-11-14)
+
+
+### Features
+
+* add object storage mount support for sandboxes ([59eab05](https://github.com/scalebox-dev/scalebox-sdk-js/commit/59eab05bd49cd6089364b0c55ed55799b44097d6))
+* implement pause and resume functionality for sandboxes ([f50f073](https://github.com/scalebox-dev/scalebox-sdk-js/commit/f50f0739a2c05e6a76478e6a624ebab7ac916ef7))
+* implement signed URL functionality for file download/upload ([a79451b](https://github.com/scalebox-dev/scalebox-sdk-js/commit/a79451b60108a522aefbfcf82b7de5bb38564ff7))
+
 # [Unreleased]
 
 ### Added
