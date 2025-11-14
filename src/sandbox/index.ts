@@ -18,6 +18,7 @@ import { Pty } from './pty'
 import { ProcessManager } from './process'
 import { SandboxApi } from './sandboxApi'
 import type { CodeExecutionOpts, ExecutionResult, Language } from '../code-interpreter'
+import { getSignature } from './signature'
 
 /**
  * Scalebox cloud sandbox is a secure and isolated cloud environment.
@@ -273,32 +274,11 @@ export class Sandbox {
     sandboxId: string,
     opts?: SandboxConnectOpts
   ): Promise<InstanceType<S>> {
-    try {
-      // 只在明确传入 timeoutMs 时才更新 timeout，避免意外重置
-      if (opts?.timeoutMs !== undefined) {
-        await SandboxApi.setTimeout(
-          sandboxId,
-          opts.timeoutMs,
-          opts
-        )
-      }
-      // 如果未传入 timeoutMs，保持现有 timeout 不变
-    } catch (e) {
-      if (e instanceof SandboxError) {
-        // 暂停的沙盒需要恢复：传入 timeout 避免恢复后立即超时
-        const resumeOpts = {
-          ...opts,
-          timeoutMs: opts?.timeoutMs ?? DEFAULT_SANDBOX_TIMEOUT_MS
-        }
-        await SandboxApi.resumeSandbox(sandboxId, resumeOpts)
-      } else {
-        throw e
-      }
-    }
+    // Use unified connect endpoint: backend automatically handles running or paused sandboxes
+    // If sandbox is running, returns info immediately; if paused, automatically resumes
+    const info = await SandboxApi.connectSandbox(sandboxId, opts)
 
-    const info = await SandboxApi.getFullInfo(sandboxId, opts)
-
-    // sandboxDomain 和 envdAccessToken 必须存在
+    // sandboxDomain and envdAccessToken must exist
     if (!info.sandboxDomain) {
       throw new ScaleboxError(`Failed to connect to sandbox ${sandboxId}: sandboxDomain not available`)
     }
@@ -339,24 +319,9 @@ export class Sandbox {
    * ```
    */
   async connect(opts?: SandboxOpts): Promise<this> {
-    try {
-      // 只在明确传入 timeoutMs 时才更新 timeout，避免意外重置
-      if (opts?.timeoutMs !== undefined) {
-        await SandboxApi.setTimeout(
-          this.sandboxId,
-          opts.timeoutMs,
-          opts
-        )
-      }
-      // 如果未传入 timeoutMs，保持现有 timeout 不变
-    } catch (e) {
-      // 暂停的沙盒需要恢复：传入 timeout 避免恢复后立即超时
-      const resumeOpts = {
-        ...opts,
-        timeoutMs: opts?.timeoutMs ?? DEFAULT_SANDBOX_TIMEOUT_MS
-      }
-      await SandboxApi.resumeSandbox(this.sandboxId, resumeOpts)
-    }
+    // Use unified connect endpoint: backend automatically handles running or paused sandboxes
+    // If sandbox is running, returns info immediately; if paused, automatically resumes
+    await SandboxApi.connectSandbox(this.sandboxId, opts)
 
     return this
   }
@@ -529,24 +494,24 @@ export class Sandbox {
    *
    * You have to send a POST request to this URL with the file as multipart/form-data.
    *
-   * @param path path to the file in the sandbox.
+   * @param path path to the file in the sandbox (optional, can be provided in form data).
    *
    * @param opts upload url options.
    *
    * @returns URL for uploading file.
    */
   async uploadUrl(path?: string, opts?: SandboxUrlOpts) {
-    const user = opts?.user || 'user'
-    
-    // Build the upload URL using sandboxDomain (which already includes the correct port)
     const baseUrl = `https://${this.sandboxDomain}`
     const url = new URL('/upload', baseUrl)
     
-    // TODO: Implement signature-based authentication if needed
-    // For now, we rely on the API key authentication via headers
-    // This would be used for secure sandboxes in the future
-    if (opts?.useSignatureExpiration !== undefined) {
-      console.warn('Signature-based authentication not yet implemented. Using Bearer + X-Access-Token authentication.')
+    if (path) {
+      url.searchParams.set('path', path)
+    }
+    
+    // Generate signature if envdAccessToken is available (consistent with Python SDK)
+    // If useSignatureExpiration is provided, use it; otherwise generate signature without expiration
+    if (this.envdAccessToken) {
+      this.addSignatureToUrl(url, path || '/', 'write', opts || {})
     }
     
     return url.toString()
@@ -562,21 +527,57 @@ export class Sandbox {
    * @returns URL for downloading file.
    */
   async downloadUrl(path: string, opts?: SandboxUrlOpts) {
-    const user = opts?.user || 'user'
-    
-    // Build the download URL using sandboxDomain (which already includes the correct port)
     const baseUrl = `https://${this.sandboxDomain}`
-    const cleanPath = path.replace(/^\/+/, '') // Remove leading slashes
+    const cleanPath = path.replace(/^\/+/, '')
     const url = new URL(`/download/${cleanPath}`, baseUrl)
     
-    // TODO: Implement signature-based authentication if needed
-    // For now, we rely on the API key authentication via headers
-    // This would be used for secure sandboxes in the future
-    if (opts?.useSignatureExpiration !== undefined) {
-      console.warn('Signature-based authentication not yet implemented. Using Bearer + X-Access-Token authentication.')
+    // Generate signature if envdAccessToken is available (consistent with Python SDK)
+    // If useSignatureExpiration is provided, use it; otherwise generate signature without expiration
+    if (this.envdAccessToken) {
+      this.addSignatureToUrl(url, path, 'read', opts || {})
     }
     
     return url.toString()
+  }
+
+  /**
+   * Add signature parameters to URL for secure file access.
+   * 
+   * @private
+   */
+  private addSignatureToUrl(
+    url: URL,
+    path: string,
+    operation: 'read' | 'write',
+    opts: SandboxUrlOpts
+  ): void {
+    if (!this.envdAccessToken) {
+      throw new ScaleboxError(
+        'Cannot generate signed URL: envdAccessToken is not available. Signed URLs require an access token.'
+      )
+    }
+
+    // Normalize path to match backend expectations:
+    // - Remove all leading slashes, then add a single leading slash
+    // - This ensures consistency with backend path extraction logic
+    //   Backend extracts download path using: strings.TrimPrefix(urlPath, "/download")
+    //   Backend extracts upload path from query parameter "path"
+    const normalizedPath = path ? `/${path.replace(/^\/+/, '')}` : '/'
+    // Use 'root' as default user to match Filesystem default and ensure user exists in system
+    const user = opts.user || 'root'
+    const signature = getSignature(
+      normalizedPath,
+      operation,
+      user,
+      this.envdAccessToken,
+      opts.useSignatureExpiration
+    )
+
+    url.searchParams.set('signature', signature.signature)
+    if (signature.expiration !== null) {
+      url.searchParams.set('signature_expiration', signature.expiration.toString())
+    }
+    url.searchParams.set('username', user)
   }
 
   /**
