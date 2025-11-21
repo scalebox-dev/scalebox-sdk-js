@@ -66,7 +66,8 @@ export type {
   SandboxMetricsOpts,
   SandboxApiOpts,
   SandboxState,
-  SandboxBetaCreateOpts
+  SandboxBetaCreateOpts,
+  PortConfig
 } from './sandbox/types'
 
 // Export filesystem types

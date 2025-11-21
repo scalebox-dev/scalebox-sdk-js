@@ -5,6 +5,17 @@
 // Import necessary types from sandboxApi.ts
 export type { SandboxOpts, SandboxApiOpts, SandboxListOpts, SandboxMetricsOpts } from './sandboxApi'
 
+/**
+ * Port configuration for sandbox
+ */
+export interface PortConfig {
+  port: number
+  servicePort?: number
+  protocol?: 'TCP' | 'UDP'
+  name: string
+  isProtected?: boolean
+}
+
 // Unified sandbox information structure
 export interface SandboxInfo {
   // Basic fields
@@ -83,6 +94,11 @@ export interface SandboxInfo {
   
   // Object storage mount information
   objectStorage?: ObjectStorageInfo
+  
+  // Port configuration
+  ports?: PortConfig[]
+  templatePorts?: PortConfig[]
+  customPorts?: PortConfig[]
 }
 
 export interface SandboxMetrics {
@@ -97,7 +113,12 @@ export interface SandboxMetrics {
 
 export interface SandboxQuery {
   metadata?: Record<string, string>
-  status?: Array<'running' | 'paused' | 'pausing' | 'resuming' | 'stopped' | 'starting' | 'stopping'>
+  /**
+   * Filter by sandbox status.
+   * Note: Backend API accepts a single status string, but SDK accepts an array for convenience.
+   * If multiple statuses are provided, only the first one will be used.
+   */
+  status?: Array<'created' | 'starting' | 'running' | 'pausing' | 'paused' | 'resuming' | 'terminating' | 'terminated' | 'failed'>
   templateId?: string
 }
 

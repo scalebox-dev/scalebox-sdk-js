@@ -114,6 +114,7 @@ export interface SandboxConnectOpts extends SandboxApiOpts {
 
 /**
  * State of the sandbox.
+ * @deprecated Use SandboxQuery.status instead for more complete state support
  */
 export type SandboxState = 'running' | 'paused'
 
@@ -126,15 +127,21 @@ export interface SandboxListOpts {
   apiUrl?: string
   /**
    * Filter the list of sandboxes, e.g. by metadata `metadata:{"key": "value"}`, if there are multiple filters they are combined with AND.
-   *
+   * Note: Backend API accepts a single status string, but SDK accepts an array for convenience.
+   * If multiple statuses are provided, only the first one will be used.
    */
   query?: {
     metadata?: Record<string, string>
     /**
      * Filter the list of sandboxes by state.
+     * Supported states: created, starting, running, pausing, paused, resuming, terminating, terminated, failed
      * @default ['running', 'paused']
      */
-    status?: Array<SandboxState>
+    status?: Array<'created' | 'starting' | 'running' | 'pausing' | 'paused' | 'resuming' | 'terminating' | 'terminated' | 'failed'>
+    /**
+     * Filter by template ID
+     */
+    templateId?: string
   }
 
   /**
@@ -543,6 +550,71 @@ export class SandboxApi {
         throw new NotFoundError(`Sandbox ${sandboxId} not found`)
       }
       throw error
+    }
+  }
+
+  /**
+   * Create a template from a running sandbox.
+   * 
+   * @param sandboxId sandbox ID (must be in running state)
+   * @param opts template creation options
+   * @returns created template information
+   */
+  static async createTemplateFromSandbox(
+    sandboxId: string,
+    opts: {
+      name: string
+      description?: string
+      isPublic?: boolean
+      cpuCount?: number
+      memoryMB?: number
+      ports?: string // JSON string of port configurations
+      resetPorts?: boolean
+      customCommand?: string
+      readyCommand?: string
+    } & SandboxApiOpts
+  ): Promise<{
+    templateId: string
+    name: string
+    description?: string
+    defaultCpuCount: number
+    defaultMemoryMB: number
+    isPublic: boolean
+    status: string
+    harborProject: string
+    harborRepository: string
+    harborTag: string
+    baseTemplateId?: string
+    ports?: string
+    customCommand?: string
+    readyCommand?: string
+    createdAt: Date
+    message: string
+  }> {
+    const config = new ConnectionConfig({
+      apiKey: opts?.apiKey,
+      apiUrl: opts?.apiUrl,
+      debug: opts?.debug,
+      domain: opts?.domain,
+      requestTimeoutMs: opts?.requestTimeoutMs,
+      headers: opts?.headers
+    })
+    const client = new ApiClient(config, sandboxId)
+
+    try {
+      return await client.createTemplateFromSandbox(sandboxId, {
+        name: opts.name,
+        description: opts.description,
+        isPublic: opts.isPublic,
+        cpuCount: opts.cpuCount,
+        memoryMB: opts.memoryMB,
+        ports: opts.ports,
+        resetPorts: opts.resetPorts,
+        customCommand: opts.customCommand,
+        readyCommand: opts.readyCommand
+      })
+    } catch (error) {
+      throw new ScaleboxError(`Failed to create template from sandbox: ${error}`)
     }
   }
 }

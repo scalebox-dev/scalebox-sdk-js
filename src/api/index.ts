@@ -1,7 +1,7 @@
 import createClient from 'openapi-fetch'
 import { paths } from './schema.gen'
 import { ConnectionConfig } from '../connectionConfig'
-import { SandboxInfo, SandboxMetrics, SandboxQuery, ObjectStorageConfig } from '../sandbox/types'
+import { SandboxInfo, SandboxMetrics, SandboxQuery, ObjectStorageConfig, PortConfig } from '../sandbox/types'
 
 /**
  * 键名转换函数 - 前端 camelCase 与后端 snake_case 的双向转换
@@ -134,6 +134,8 @@ export class ApiClient {
     isAsync?: boolean
     // 对象存储配置
     objectStorage?: ObjectStorageConfig
+    // 自定义端口
+    customPorts?: PortConfig[]
   }): Promise<SandboxInfo> {
     // 使用通用转换函数将 camelCase 转换为后端期望的 snake_case
     const backendRequest = convertKeysToSnakeCase({
@@ -150,7 +152,8 @@ export class ApiClient {
       secure: request.secure ?? true, // 默认启用安全
       allowInternetAccess: request.allowInternetAccess ?? true, // 将转换为 allow_internet_access
       isAsync: request.isAsync ?? false, // 将转换为 is_async，默认同步
-      objectStorage: request.objectStorage // 将转换为 object_storage
+      objectStorage: request.objectStorage, // 将转换为 object_storage
+      customPorts: request.customPorts // 将转换为 custom_ports
     })
     
     const response = await this.client.POST('/v1/sandboxes', {
@@ -251,7 +254,12 @@ export class ApiClient {
       objectStorage: sandboxData.objectStorage ? {
         uri: sandboxData.objectStorage.uri,
         mountPoint: sandboxData.objectStorage.mountPoint
-      } : undefined
+      } : undefined,
+      
+      // Port configuration
+      ports: sandboxData.ports || [],
+      templatePorts: sandboxData.templatePorts || sandboxData.template_ports || [],
+      customPorts: sandboxData.customPorts || sandboxData.custom_ports || []
     }
   }
 
@@ -504,7 +512,33 @@ export class ApiClient {
     limit?: number
     nextToken?: string
   } = {}): Promise<{ sandboxes: SandboxInfo[], nextToken?: string }> {
-    const response = await this.client.GET('/v1/sandboxes')
+    // Build query parameters according to OpenAPI schema
+    type QueryParams = NonNullable<paths['/v1/sandboxes']['get']['parameters']['query']>
+    const queryParams: QueryParams = {}
+    
+    // Handle status filter - backend accepts single status string, SDK accepts array for convenience
+    if (opts.query?.status && opts.query.status.length > 0) {
+      // Use first status if multiple provided (backend only accepts single status)
+      queryParams.status = opts.query.status[0] as QueryParams['status']
+    }
+    
+    // Handle limit
+    if (opts.limit !== undefined) {
+      queryParams.limit = opts.limit
+    }
+    
+    // Handle pagination - backend uses offset, SDK uses nextToken
+    // For now, nextToken is not fully implemented in backend, so we'll skip it
+    // TODO: Implement proper token-based pagination when backend supports it
+    
+    // Note: metadata and templateId filters from SandboxQuery are not supported by backend API as query parameters
+    // They would need to be filtered client-side or added to backend API in the future
+    
+    const response = await this.client.GET('/v1/sandboxes', {
+      params: {
+        query: queryParams
+      }
+    })
 
     if (response.error) {
       throw new Error(`Failed to list sandboxes: ${response.error}`)
@@ -590,12 +624,232 @@ export class ApiClient {
       objectStorage: sandbox.objectStorage ? {
         uri: sandbox.objectStorage.uri,
         mountPoint: sandbox.objectStorage.mountPoint
-      } : undefined
+      } : undefined,
+      
+      // Port configuration
+      ports: sandbox.ports || [],
+      templatePorts: sandbox.templatePorts || sandbox.template_ports || [],
+      customPorts: sandbox.customPorts || sandbox.custom_ports || []
     }))
 
     return {
       sandboxes,
       nextToken: undefined
+    }
+  }
+
+  /**
+   * 从沙箱创建模板
+   */
+  async createTemplateFromSandbox(
+    sandboxId: string,
+    request: {
+      name: string
+      description?: string
+      isPublic?: boolean
+      cpuCount?: number
+      memoryMB?: number
+      ports?: string // JSON string of port configurations
+      resetPorts?: boolean
+      customCommand?: string
+      readyCommand?: string
+    }
+  ): Promise<{
+    templateId: string
+    name: string
+    description?: string
+    defaultCpuCount: number
+    defaultMemoryMB: number
+    isPublic: boolean
+    status: string
+    harborProject: string
+    harborRepository: string
+    harborTag: string
+    baseTemplateId?: string
+    ports?: string
+    customCommand?: string
+    readyCommand?: string
+    createdAt: Date
+    message: string
+  }> {
+    const backendRequest = convertKeysToSnakeCase(request)
+    
+    const response = await this.client.POST('/v1/sandboxes/{sandbox_id}/create-template', {
+      params: {
+        path: { sandbox_id: sandboxId }
+      },
+      body: backendRequest
+    })
+
+    if (response.error) {
+      throw new Error(`Failed to create template from sandbox: ${JSON.stringify(response.error)}`)
+    }
+
+    const processedResponse = this.processResponse(response) as any
+    const templateData = processedResponse.data?.data || processedResponse.data
+
+    if (!templateData) {
+      throw new Error('Invalid response: missing template data')
+    }
+
+    return {
+      templateId: templateData.templateId || templateData.template_id || '',
+      name: templateData.name || '',
+      description: templateData.description,
+      defaultCpuCount: templateData.defaultCpuCount || templateData.default_cpu_count || 2,
+      defaultMemoryMB: templateData.defaultMemoryMB || templateData.default_memory_mb || 512,
+      isPublic: templateData.isPublic || templateData.is_public || false,
+      status: templateData.status || 'pending',
+      harborProject: templateData.harborProject || templateData.harbor_project || '',
+      harborRepository: templateData.harborRepository || templateData.harbor_repository || '',
+      harborTag: templateData.harborTag || templateData.harbor_tag || 'latest',
+      baseTemplateId: templateData.baseTemplateId || templateData.base_template_id,
+      ports: templateData.ports,
+      customCommand: templateData.customCommand || templateData.custom_command,
+      readyCommand: templateData.readyCommand || templateData.ready_command,
+      createdAt: templateData.createdAt ? new Date(templateData.createdAt) : new Date(),
+      message: templateData.message || 'Template creation initiated'
+    }
+  }
+
+  /**
+   * 获取沙箱端口列表
+   */
+  async getSandboxPorts(sandboxId: string): Promise<{
+    ports: PortConfig[]
+    templatePorts: PortConfig[]
+    customPorts: PortConfig[]
+  }> {
+    const response = await this.client.GET('/v1/sandboxes/{sandbox_id}/ports', {
+      params: {
+        path: { sandbox_id: sandboxId }
+      }
+    })
+
+    if (response.error) {
+      throw new Error(`Failed to get sandbox ports: ${JSON.stringify(response.error)}`)
+    }
+
+    const processedResponse = this.processResponse(response) as any
+    const portsData = processedResponse.data?.data || processedResponse.data
+
+    return {
+      ports: portsData.ports || [],
+      templatePorts: portsData.templatePorts || portsData.template_ports || [],
+      customPorts: portsData.customPorts || portsData.custom_ports || []
+    }
+  }
+
+  /**
+   * 添加自定义端口到沙箱
+   */
+  async addSandboxPort(
+    sandboxId: string,
+    port: PortConfig
+  ): Promise<SandboxInfo> {
+    const backendRequest = convertKeysToSnakeCase(port)
+    
+    const response = await this.client.POST('/v1/sandboxes/{sandbox_id}/ports', {
+      params: {
+        path: { sandbox_id: sandboxId }
+      },
+      body: backendRequest
+    })
+
+    if (response.error) {
+      throw new Error(`Failed to add port: ${JSON.stringify(response.error)}`)
+    }
+
+    const processedResponse = this.processResponse(response) as any
+    const sandboxData = processedResponse.data?.data || processedResponse.data
+
+    if (!sandboxData) {
+      throw new Error('Invalid response: missing sandbox data')
+    }
+
+    // 复用 createSandbox 中的转换逻辑
+    const sandboxStartedAt = sandboxData.startedAt ? new Date(sandboxData.startedAt) : new Date()
+    const sandboxEndAt = sandboxData.timeoutAt 
+      ? new Date(sandboxData.timeoutAt)
+      : new Date(sandboxStartedAt.getTime() + (sandboxData.timeout || 300) * 1000)
+
+    return {
+      sandboxId: sandboxData.sandboxId || sandboxData.sandbox_id || '',
+      templateId: sandboxData.templateId || sandboxData.template_id || '',
+      name: sandboxData.name || '',
+      metadata: sandboxData.metadata || {},
+      startedAt: sandboxStartedAt,
+      endAt: sandboxEndAt,
+      status: sandboxData.status || 'created',
+      cpuCount: sandboxData.cpuCount || sandboxData.cpu_count || 1,
+      memoryMB: sandboxData.memoryMB || sandboxData.memory_mb || 512,
+      envdVersion: '1.0.0',
+      envs: sandboxData.envVars || sandboxData.env_vars || {},
+      templateName: sandboxData.templateName || sandboxData.template_name,
+      sandboxDomain: sandboxData.sandboxDomain || sandboxData.sandbox_domain,
+      timeout: sandboxData.timeout,
+      uptime: sandboxData.uptime || 0,
+      substatus: sandboxData.substatus,
+      reason: sandboxData.reason,
+      stoppedAt: sandboxData.stoppedAt ? new Date(sandboxData.stoppedAt) : undefined,
+      timeoutAt: sandboxData.timeoutAt ? new Date(sandboxData.timeoutAt) : undefined,
+      endedAt: sandboxData.endedAt ? new Date(sandboxData.endedAt) : undefined,
+      createdAt: sandboxData.createdAt ? new Date(sandboxData.createdAt) : new Date(),
+      updatedAt: sandboxData.updatedAt ? new Date(sandboxData.updatedAt) : new Date(),
+      pausedAt: sandboxData.pausedAt ? new Date(sandboxData.pausedAt) : undefined,
+      resumedAt: sandboxData.resumedAt ? new Date(sandboxData.resumedAt) : undefined,
+      pauseTimeoutAt: sandboxData.pauseTimeoutAt ? new Date(sandboxData.pauseTimeoutAt) : undefined,
+      totalPausedSeconds: sandboxData.totalPausedSeconds,
+      clusterId: sandboxData.clusterId,
+      namespaceId: sandboxData.namespaceId,
+      podName: sandboxData.podName,
+      podUid: sandboxData.podUid,
+      podIp: sandboxData.podIp,
+      nodeName: sandboxData.nodeName,
+      containerName: sandboxData.containerName,
+      allocationTime: sandboxData.allocationTime ? new Date(sandboxData.allocationTime) : undefined,
+      lastPodStatus: sandboxData.lastPodStatus,
+      deletionInProgress: sandboxData.deletionInProgress || false,
+      envdAccessToken: sandboxData.envdAccessToken,
+      resources: sandboxData.resources || {
+        cpu: sandboxData.cpuCount || sandboxData.cpu_count || 1,
+        memory: sandboxData.memoryMB || sandboxData.memory_mb || 512,
+        storage: sandboxData.storageGB || sandboxData.storage_gb || 0,
+        bandwidth: 0
+      },
+      cost: sandboxData.cost || {
+        hourlyRate: 0.0,
+        totalCost: 0.0
+      },
+      owner: sandboxData.owner,
+      ownerUserId: sandboxData.ownerUserId || sandboxData.owner_user_id,
+      projectId: sandboxData.projectId || sandboxData.project_id,
+      projectName: sandboxData.projectName || sandboxData.project_name,
+      objectStorage: sandboxData.objectStorage ? {
+        uri: sandboxData.objectStorage.uri,
+        mountPoint: sandboxData.objectStorage.mountPoint
+      } : undefined,
+      ports: sandboxData.ports || [],
+      templatePorts: sandboxData.templatePorts || sandboxData.template_ports || [],
+      customPorts: sandboxData.customPorts || sandboxData.custom_ports || []
+    }
+  }
+
+  /**
+   * 从沙箱删除自定义端口
+   */
+  async removeSandboxPort(sandboxId: string, port: number): Promise<void> {
+    const response = await this.client.DELETE('/v1/sandboxes/{sandbox_id}/ports/{port}', {
+      params: {
+        path: {
+          sandbox_id: sandboxId,
+          port: port
+        }
+      }
+    })
+
+    if (response.error) {
+      throw new Error(`Failed to remove port: ${JSON.stringify(response.error)}`)
     }
   }
 
@@ -714,20 +968,70 @@ export class ApiClient {
     }
     
     // Since processResponse has already converted keys, use camelCase fields directly
+    const sandboxStartedAt = sandboxData.startedAt ? new Date(sandboxData.startedAt) : new Date()
+    const sandboxEndAt = sandboxData.timeoutAt 
+      ? new Date(sandboxData.timeoutAt)
+      : new Date(sandboxStartedAt.getTime() + (sandboxData.timeout || 300) * 1000)
+    
     const sandboxInfo: SandboxInfo = {
-      sandboxId: sandboxData.sandboxId || sandboxData.sandbox_id,
-      templateId: sandboxData.templateId || sandboxData.template_id,
-      name: sandboxData.name,
+      sandboxId: sandboxData.sandboxId || sandboxData.sandbox_id || '',
+      templateId: sandboxData.templateId || sandboxData.template_id || '',
+      name: sandboxData.name || '',
       metadata: sandboxData.metadata || {},
-      startedAt: sandboxData.startedAt ? new Date(sandboxData.startedAt) : new Date(),
-      endAt: sandboxData.endAt ? new Date(sandboxData.endAt) : new Date(),
+      startedAt: sandboxStartedAt,
+      endAt: sandboxEndAt,
       status: (sandboxData.status || sandboxData.state || 'running') as SandboxInfo['status'],
       cpuCount: sandboxData.cpuCount || sandboxData.cpu_count || 1,
       memoryMB: sandboxData.memoryMB || sandboxData.memory_mb || 512,
-      envdVersion: sandboxData.envdVersion || sandboxData.envd_version || '0.1.0',
+      envdVersion: sandboxData.envdVersion || sandboxData.envd_version || '1.0.0',
+      envs: sandboxData.envs || sandboxData.env_vars || {},
+      templateName: sandboxData.templateName || sandboxData.template_name,
       sandboxDomain: sandboxData.sandboxDomain || sandboxData.domain,
+      timeout: sandboxData.timeout,
+      uptime: sandboxData.uptime || 0,
+      substatus: sandboxData.substatus,
+      reason: sandboxData.reason,
+      stoppedAt: sandboxData.stoppedAt ? new Date(sandboxData.stoppedAt) : undefined,
+      timeoutAt: sandboxData.timeoutAt ? new Date(sandboxData.timeoutAt) : undefined,
+      endedAt: sandboxData.endedAt ? new Date(sandboxData.endedAt) : undefined,
+      createdAt: sandboxData.createdAt ? new Date(sandboxData.createdAt) : new Date(),
+      updatedAt: sandboxData.updatedAt ? new Date(sandboxData.updatedAt) : new Date(),
+      pausedAt: sandboxData.pausedAt ? new Date(sandboxData.pausedAt) : undefined,
+      resumedAt: sandboxData.resumedAt ? new Date(sandboxData.resumedAt) : undefined,
+      pauseTimeoutAt: sandboxData.pauseTimeoutAt ? new Date(sandboxData.pauseTimeoutAt) : undefined,
+      totalPausedSeconds: sandboxData.totalPausedSeconds,
+      clusterId: sandboxData.clusterId,
+      namespaceId: sandboxData.namespaceId,
+      podName: sandboxData.podName,
+      podUid: sandboxData.podUid,
+      podIp: sandboxData.podIp,
+      nodeName: sandboxData.nodeName,
+      containerName: sandboxData.containerName,
+      allocationTime: sandboxData.allocationTime ? new Date(sandboxData.allocationTime) : undefined,
+      lastPodStatus: sandboxData.lastPodStatus,
+      deletionInProgress: sandboxData.deletionInProgress || false,
       envdAccessToken: sandboxData.envdAccessToken || sandboxData.envd_access_token,
-      envs: sandboxData.envs || sandboxData.env_vars || {}
+      resources: sandboxData.resources || {
+        cpu: sandboxData.cpuCount || sandboxData.cpu_count || 1,
+        memory: sandboxData.memoryMB || sandboxData.memory_mb || 512,
+        storage: sandboxData.storageGB || sandboxData.storage_gb || 0,
+        bandwidth: 0
+      },
+      cost: sandboxData.cost || {
+        hourlyRate: 0.0,
+        totalCost: 0.0
+      },
+      owner: sandboxData.owner,
+      ownerUserId: sandboxData.ownerUserId || sandboxData.owner_user_id,
+      projectId: sandboxData.projectId || sandboxData.project_id,
+      projectName: sandboxData.projectName || sandboxData.project_name,
+      objectStorage: sandboxData.objectStorage ? {
+        uri: sandboxData.objectStorage.uri,
+        mountPoint: sandboxData.objectStorage.mountPoint
+      } : undefined,
+      ports: sandboxData.ports || [],
+      templatePorts: sandboxData.templatePorts || sandboxData.template_ports || [],
+      customPorts: sandboxData.customPorts || sandboxData.custom_ports || []
     }
     
     return sandboxInfo

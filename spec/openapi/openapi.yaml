@@ -67,7 +67,7 @@ paths:
           in: query
           schema:
             type: string
-            enum: [created, starting, running, terminating, terminated, failed]
+            enum: [created, starting, running, pausing, paused, resuming, terminating, terminated, failed]
           description: Filter by status
         - name: owner_user_id
           in: query
@@ -277,6 +277,232 @@ paths:
                     type: string
         '400':
           description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/sandboxes/{sandbox_id}/ports:
+    get:
+      summary: Get sandbox ports
+      description: Get all ports (template + custom) for a sandbox
+      tags:
+        - Sandboxes
+      parameters:
+        - name: sandbox_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Sandbox ID
+      responses:
+        '200':
+          description: Port list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      ports:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/PortConfig'
+                      template_ports:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/PortConfig'
+                      custom_ports:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/PortConfig'
+        '404':
+          description: Sandbox not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    
+    post:
+      summary: Add custom port to sandbox
+      description: Add a custom port to a running sandbox
+      tags:
+        - Sandboxes
+      parameters:
+        - name: sandbox_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Sandbox ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - port
+                - name
+              properties:
+                port:
+                  type: integer
+                  format: int32
+                  description: Port number
+                service_port:
+                  type: integer
+                  format: int32
+                  description: Service port (defaults to port)
+                protocol:
+                  type: string
+                  enum: [TCP, UDP]
+                  default: TCP
+                  description: Port protocol
+                name:
+                  type: string
+                  description: Port name
+      responses:
+        '200':
+          description: Port added successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SandboxResponse'
+                  message:
+                    type: string
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Sandbox not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/sandboxes/{sandbox_id}/ports/{port}:
+    delete:
+      summary: Remove custom port from sandbox
+      description: Remove a custom port from a running sandbox
+      tags:
+        - Sandboxes
+      parameters:
+        - name: sandbox_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Sandbox ID
+        - name: port
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+          description: Port number to remove
+      responses:
+        '200':
+          description: Port removed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Sandbox not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/sandboxes/{sandbox_id}/create-template:
+    post:
+      summary: Create template from sandbox
+      description: Create a template from a running sandbox. The sandbox must be in running state.
+      tags:
+        - Sandboxes
+      parameters:
+        - name: sandbox_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Sandbox ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTemplateFromSandboxRequest'
+      responses:
+        '200':
+          description: Template creation initiated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      template_id:
+                        type: string
+                      name:
+                        type: string
+                      description:
+                        type: string
+                      default_cpu_count:
+                        type: integer
+                      default_memory_mb:
+                        type: integer
+                      is_public:
+                        type: boolean
+                      status:
+                        type: string
+                      harbor_project:
+                        type: string
+                      harbor_repository:
+                        type: string
+                      harbor_tag:
+                        type: string
+                      base_template_id:
+                        type: string
+                      ports:
+                        type: string
+                        description: JSON string of port configurations
+                      custom_command:
+                        type: string
+                      ready_command:
+                        type: string
+                      created_at:
+                        type: string
+                        format: date-time
+                      message:
+                        type: string
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Sandbox not found
           content:
             application/json:
               schema:
@@ -553,6 +779,11 @@ components:
           type: boolean
           default: false
           description: When true, return immediately; when false, wait for running/failed state
+        custom_ports:
+          type: array
+          items:
+            $ref: '#/components/schemas/PortConfig'
+          description: Optional custom ports (ports not in template). Must have unique port numbers and names.
 
     UpdateSandboxRequest:
       type: object
@@ -679,6 +910,21 @@ components:
         uptime:
           type: integer
           description: Uptime in seconds
+        ports:
+          type: array
+          items:
+            $ref: '#/components/schemas/PortConfig'
+          description: All ports (template ports + custom ports)
+        template_ports:
+          type: array
+          items:
+            $ref: '#/components/schemas/PortConfig'
+          description: Ports from template
+        custom_ports:
+          type: array
+          items:
+            $ref: '#/components/schemas/PortConfig'
+          description: Custom ports added to sandbox
         # Kubernetes deployment information
         cluster_id:
           type: string
@@ -890,6 +1136,71 @@ components:
           type: string
         data:
           type: object
+
+    PortConfig:
+      type: object
+      required:
+        - port
+        - name
+      properties:
+        port:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 65535
+          description: Container port number
+        service_port:
+          type: integer
+          format: int32
+          description: Kubernetes service port (defaults to port if not provided)
+        protocol:
+          type: string
+          enum: [TCP, UDP]
+          default: TCP
+          description: Port protocol
+        name:
+          type: string
+          maxLength: 15
+          description: Port name (required, must be DNS-compatible)
+        is_protected:
+          type: boolean
+          default: false
+          description: Whether port is protected (template ports only, cannot be removed)
+
+    CreateTemplateFromSandboxRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: Template name (must be unique for the user)
+        description:
+          type: string
+          description: Template description
+        is_public:
+          type: boolean
+          description: Whether template is public (admin users only, default false for non-admin)
+        cpu_count:
+          type: integer
+          minimum: 1
+          description: CPU count (nil/omit = inherit from base template, 0 = explicitly inherit, >0 = use)
+        memory_mb:
+          type: integer
+          minimum: 128
+          description: Memory in MB (nil/omit = inherit from base template, 0 = explicitly inherit, >0 = use)
+        ports:
+          type: string
+          description: Additional ports as JSON string (added to inherited ports from base template)
+        reset_ports:
+          type: boolean
+          description: If true, remove unprotected ports from base template
+        custom_command:
+          type: string
+          description: Custom startup command
+        ready_command:
+          type: string
+          description: Custom readiness probe command
 
     Error:
       type: object

@@ -33,7 +33,7 @@ export interface paths {
                     /** @description Sort order */
                     sort_order?: "asc" | "desc";
                     /** @description Filter by status */
-                    status?: "created" | "starting" | "running" | "terminating" | "terminated" | "failed";
+                    status?: "created" | "starting" | "running" | "pausing" | "paused" | "resuming" | "terminating" | "terminated" | "failed";
                 };
                 header?: never;
                 path?: never;
@@ -266,6 +266,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/sandboxes/{sandbox_id}/create-template": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create template from sandbox
+         * @description Create a template from a running sandbox. The sandbox must be in running state.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Sandbox ID */
+                    sandbox_id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateTemplateFromSandboxRequest"];
+                };
+            };
+            responses: {
+                /** @description Template creation initiated */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data?: {
+                                base_template_id?: string;
+                                /** Format: date-time */
+                                created_at?: string;
+                                custom_command?: string;
+                                default_cpu_count?: number;
+                                default_memory_mb?: number;
+                                description?: string;
+                                harbor_project?: string;
+                                harbor_repository?: string;
+                                harbor_tag?: string;
+                                is_public?: boolean;
+                                message?: string;
+                                name?: string;
+                                /** @description JSON string of port configurations */
+                                ports?: string;
+                                ready_command?: string;
+                                status?: string;
+                                template_id?: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Bad request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Sandbox not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/sandboxes/{sandbox_id}/deploy": {
         parameters: {
             query?: never;
@@ -335,6 +420,197 @@ export interface paths {
             };
         };
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/sandboxes/{sandbox_id}/ports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get sandbox ports
+         * @description Get all ports (template + custom) for a sandbox
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Sandbox ID */
+                    sandbox_id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Port list */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data?: {
+                                custom_ports?: components["schemas"]["PortConfig"][];
+                                ports?: components["schemas"]["PortConfig"][];
+                                template_ports?: components["schemas"]["PortConfig"][];
+                            };
+                        };
+                    };
+                };
+                /** @description Sandbox not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Add custom port to sandbox
+         * @description Add a custom port to a running sandbox
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Sandbox ID */
+                    sandbox_id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @description Port name */
+                        name: string;
+                        /**
+                         * Format: int32
+                         * @description Port number
+                         */
+                        port: number;
+                        /**
+                         * @description Port protocol
+                         * @default TCP
+                         * @enum {string}
+                         */
+                        protocol?: "TCP" | "UDP";
+                        /**
+                         * Format: int32
+                         * @description Service port (defaults to port)
+                         */
+                        service_port?: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Port added successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data?: components["schemas"]["SandboxResponse"];
+                            message?: string;
+                        };
+                    };
+                };
+                /** @description Bad request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Sandbox not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/sandboxes/{sandbox_id}/ports/{port}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove custom port from sandbox
+         * @description Remove a custom port from a running sandbox
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Port number to remove */
+                    port: number;
+                    /** @description Sandbox ID */
+                    sandbox_id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Port removed successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            message?: string;
+                        };
+                    };
+                };
+                /** @description Bad request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Sandbox not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
         options?: never;
         head?: never;
         patch?: never;
@@ -703,6 +979,8 @@ export interface components {
             allow_internet_access: boolean;
             /** @description Number of CPU cores */
             cpu_count?: number;
+            /** @description Optional custom ports (ports not in template). Must have unique port numbers and names. */
+            custom_ports?: components["schemas"]["PortConfig"][];
             /** @description Sandbox description */
             description?: string;
             /** @description Environment variables */
@@ -736,6 +1014,26 @@ export interface components {
             /** @description Timeout in seconds (defaults to 300) */
             timeout?: number;
         };
+        CreateTemplateFromSandboxRequest: {
+            /** @description CPU count (nil/omit = inherit from base template, 0 = explicitly inherit, >0 = use) */
+            cpu_count?: number;
+            /** @description Custom startup command */
+            custom_command?: string;
+            /** @description Template description */
+            description?: string;
+            /** @description Whether template is public (admin users only, default false for non-admin) */
+            is_public?: boolean;
+            /** @description Memory in MB (nil/omit = inherit from base template, 0 = explicitly inherit, >0 = use) */
+            memory_mb?: number;
+            /** @description Template name (must be unique for the user) */
+            name: string;
+            /** @description Additional ports as JSON string (added to inherited ports from base template) */
+            ports?: string;
+            /** @description Custom readiness probe command */
+            ready_command?: string;
+            /** @description If true, remove unprotected ports from base template */
+            reset_ports?: boolean;
+        };
         Error: {
             /** @description Error code */
             code?: string;
@@ -743,6 +1041,31 @@ export interface components {
             details?: Record<string, never>;
             /** @description Error message */
             message: string;
+        };
+        PortConfig: {
+            /**
+             * @description Whether port is protected (template ports only, cannot be removed)
+             * @default false
+             */
+            is_protected: boolean;
+            /** @description Port name (required, must be DNS-compatible) */
+            name: string;
+            /**
+             * Format: int32
+             * @description Container port number
+             */
+            port: number;
+            /**
+             * @description Port protocol
+             * @default TCP
+             * @enum {string}
+             */
+            protocol: "TCP" | "UDP";
+            /**
+             * Format: int32
+             * @description Kubernetes service port (defaults to port if not provided)
+             */
+            service_port?: number;
         };
         SandboxDeploymentResponse: {
             /** @description Access token for the sandbox */
@@ -806,6 +1129,8 @@ export interface components {
              * @description Creation timestamp
              */
             created_at?: string;
+            /** @description Custom ports added to sandbox */
+            custom_ports?: components["schemas"]["PortConfig"][];
             /**
              * @description Whether sandbox deletion is in progress
              * @default false
@@ -856,6 +1181,8 @@ export interface components {
             pod_name?: string | null;
             /** @description Kubernetes pod UID */
             pod_uid?: string | null;
+            /** @description All ports (template ports + custom ports) */
+            ports?: components["schemas"]["PortConfig"][];
             /** @description Project ID */
             project_id?: string;
             /** @description Project name */
@@ -904,6 +1231,8 @@ export interface components {
             template_id?: string;
             /** @description Template name */
             template_name?: string;
+            /** @description Ports from template */
+            template_ports?: components["schemas"]["PortConfig"][];
             /** @description Timeout in seconds */
             timeout?: number;
             /**
