@@ -1,3 +1,15 @@
+# [3.6.0](https://github.com/scalebox-dev/scalebox-sdk-js/compare/v3.5.0...v3.6.0) (2025-11-21)
+
+
+### Bug Fixes
+
+* **security:** update glob and js-yaml to fix security vulnerabilities ([9a195c7](https://github.com/scalebox-dev/scalebox-sdk-js/commit/9a195c70f27b4a78fef0f52f40d02628c5d0c6f5))
+
+
+### Features
+
+* add port management, template creation from sandbox, and status filtering ([a38d98e](https://github.com/scalebox-dev/scalebox-sdk-js/commit/a38d98ee1e82a4a095e9aa3af046ef920229f6ec))
+
 # [3.5.0](https://github.com/scalebox-dev/scalebox-sdk-js/compare/v3.4.0...v3.5.0) (2025-11-14)
 
 
