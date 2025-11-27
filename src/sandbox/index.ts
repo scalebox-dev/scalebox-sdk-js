@@ -286,13 +286,30 @@ export class Sandbox {
       throw new ScaleboxError(`Failed to connect to sandbox ${sandboxId}: envdAccessToken not available`)
     }
 
-    return new this({
+    const instance = new this({
       ...opts,
       sandboxId,
       sandboxDomain: info.sandboxDomain,
       envdAccessToken: info.envdAccessToken,
       envs: info.envs,
     }) as InstanceType<S>
+
+    // Perform health check to ensure sandbox domain is accessible via ingress
+    // This ensures the sandbox is fully ready before returning to the client
+    // Especially important when resuming from paused state
+    try {
+      await instance.waitForHealth({
+        maxRetries: 100,
+        retryInterval: 200,
+        timeout: 10000
+      })
+    } catch (error) {
+      // Don't throw - allow sandbox to be returned even if health check fails
+      // The sandbox might still become available after a short delay
+      console.warn(`[Sandbox ${sandboxId}] Health check failed, sandbox may not be immediately accessible`)
+    }
+
+    return instance
   }
 
   /**
@@ -322,6 +339,20 @@ export class Sandbox {
     // Use unified connect endpoint: backend automatically handles running or paused sandboxes
     // If sandbox is running, returns info immediately; if paused, automatically resumes
     await SandboxApi.connectSandbox(this.sandboxId, opts)
+
+    // Perform health check to ensure sandbox is ready
+    // Especially important when resuming from paused state
+    try {
+      await this.waitForHealth({
+        maxRetries: 100,
+        retryInterval: 200,
+        timeout: 10000
+      })
+    } catch (error) {
+      // Don't throw - allow sandbox to be returned even if health check fails
+      // The sandbox might still become available after a short delay
+      console.warn(`[Sandbox ${this.sandboxId}] Health check failed, sandbox may not be immediately accessible`)
+    }
 
     return this
   }
