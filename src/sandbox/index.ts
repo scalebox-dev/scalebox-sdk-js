@@ -348,7 +348,7 @@ export class Sandbox {
       return `localhost:${port}`
     }
 
-    return `${port}-${this.sandboxId}.${this.sandboxDomain}`
+    return `${port}-${this.sandboxDomain}`
   }
 
   /**
