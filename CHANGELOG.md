@@ -1,3 +1,10 @@
+# [3.7.0](https://github.com/scalebox-dev/scalebox-sdk-js/compare/v3.6.1...v3.7.0) (2025-11-27)
+
+
+### Features
+
+* **sandbox:** add health check to connect method ([f983e05](https://github.com/scalebox-dev/scalebox-sdk-js/commit/f983e05b0216c71e40d1889f69562a9e08060a5d))
+
 ## [3.6.1](https://github.com/scalebox-dev/scalebox-sdk-js/compare/v3.6.0...v3.6.1) (2025-11-27)
 
 
