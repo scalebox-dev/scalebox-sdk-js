@@ -1,3 +1,10 @@
+## [3.6.1](https://github.com/scalebox-dev/scalebox-sdk-js/compare/v3.6.0...v3.6.1) (2025-11-27)
+
+
+### Bug Fixes
+
+* **sandbox:** remove duplicate sandboxId in getHost method ([53276ef](https://github.com/scalebox-dev/scalebox-sdk-js/commit/53276ef01a6010102e38e01ba38a0e042a03da0c))
+
 # [3.6.0](https://github.com/scalebox-dev/scalebox-sdk-js/compare/v3.5.0...v3.6.0) (2025-11-21)
 
 
