@@ -646,7 +646,7 @@ export class ApiClient {
     request: {
       name: string
       description?: string
-      isPublic?: boolean
+      visibility?: 'private' | 'account_shared' | 'public'
       cpuCount?: number
       memoryMB?: number
       ports?: string // JSON string of port configurations
@@ -660,7 +660,7 @@ export class ApiClient {
     description?: string
     defaultCpuCount: number
     defaultMemoryMB: number
-    isPublic: boolean
+    visibility: 'private' | 'account_shared' | 'public'
     status: string
     harborProject: string
     harborRepository: string
@@ -698,7 +698,7 @@ export class ApiClient {
       description: templateData.description,
       defaultCpuCount: templateData.defaultCpuCount || templateData.default_cpu_count || 2,
       defaultMemoryMB: templateData.defaultMemoryMB || templateData.default_memory_mb || 512,
-      isPublic: templateData.isPublic || templateData.is_public || false,
+      visibility: templateData.visibility || templateData.Visibility || 'private',
       status: templateData.status || 'pending',
       harborProject: templateData.harborProject || templateData.harbor_project || '',
       harborRepository: templateData.harborRepository || templateData.harbor_repository || '',

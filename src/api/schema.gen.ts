@@ -1021,8 +1021,6 @@ export interface components {
             custom_command?: string;
             /** @description Template description */
             description?: string;
-            /** @description Whether template is public (admin users only, default false for non-admin) */
-            is_public?: boolean;
             /** @description Memory in MB (nil/omit = inherit from base template, 0 = explicitly inherit, >0 = use) */
             memory_mb?: number;
             /** @description Template name (must be unique for the user) */
@@ -1033,6 +1031,12 @@ export interface components {
             ready_command?: string;
             /** @description If true, remove unprotected ports from base template */
             reset_ports?: boolean;
+            /**
+             * @description Template visibility: 'private' (owner only), 'account_shared' (account members), or 'public' (all users). Admin users can create public templates (default: 'public' for admin, 'private' for non-admin)
+             *
+             * @enum {string}
+             */
+            visibility?: "private" | "account_shared" | "public";
         };
         Error: {
             /** @description Error code */

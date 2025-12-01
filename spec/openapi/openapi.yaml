@@ -1178,9 +1178,14 @@ components:
         description:
           type: string
           description: Template description
-        is_public:
-          type: boolean
-          description: Whether template is public (admin users only, default false for non-admin)
+        visibility:
+          type: string
+          enum:
+            - private
+            - account_shared
+            - public
+          description: |
+            Template visibility: 'private' (owner only), 'account_shared' (account members), or 'public' (all users). Admin users can create public templates (default: 'public' for admin, 'private' for non-admin)
         cpu_count:
           type: integer
           minimum: 1

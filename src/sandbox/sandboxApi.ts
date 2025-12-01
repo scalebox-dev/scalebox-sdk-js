@@ -565,7 +565,7 @@ export class SandboxApi {
     opts: {
       name: string
       description?: string
-      isPublic?: boolean
+      visibility?: 'private' | 'account_shared' | 'public'
       cpuCount?: number
       memoryMB?: number
       ports?: string // JSON string of port configurations
@@ -579,7 +579,7 @@ export class SandboxApi {
     description?: string
     defaultCpuCount: number
     defaultMemoryMB: number
-    isPublic: boolean
+    visibility: 'private' | 'account_shared' | 'public'
     status: string
     harborProject: string
     harborRepository: string
@@ -605,7 +605,7 @@ export class SandboxApi {
       return await client.createTemplateFromSandbox(sandboxId, {
         name: opts.name,
         description: opts.description,
-        isPublic: opts.isPublic,
+        visibility: opts.visibility,
         cpuCount: opts.cpuCount,
         memoryMB: opts.memoryMB,
         ports: opts.ports,

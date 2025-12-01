@@ -74,18 +74,18 @@ describe('API Client - Template Creation from Sandbox', () => {
       expect(template.status).toBeDefined()
       expect(template.createdAt).toBeDefined()
       expect(template.message).toBeDefined()
-      expect(template.isPublic).toBe(false) // Should be private by default
+      expect(template.visibility).toBe('private') // Should be private by default
 
       // Log the template info
       console.log(`✅ Private template created successfully:`)
       console.log(`   Template ID: ${template.templateId}`)
       console.log(`   Name: ${template.name}`)
       console.log(`   Status: ${template.status}`)
-      console.log(`   Is Public: ${template.isPublic}`)
+      console.log(`   Visibility: ${template.visibility}`)
       console.log(`   Description: ${template.description}`)
       
       // Verify template is private
-      expect(template.isPublic).toBe(false)
+      expect(template.visibility).toBe('private')
       expect(template.templateId).toBeTruthy()
       expect(template.status).toBeDefined()
       
@@ -118,8 +118,8 @@ describe('API Client - Template Creation from Sandbox', () => {
             console.log(`   Template ID: ${foundTemplate.template_id || foundTemplate.templateId}`)
             console.log(`   Name: ${foundTemplate.name}`)
             console.log(`   Status: ${foundTemplate.status}`)
-            console.log(`   Is Public: ${foundTemplate.is_public || foundTemplate.isPublic}`)
-            expect(foundTemplate.is_public === false || foundTemplate.isPublic === false).toBe(true)
+            console.log(`   Visibility: ${foundTemplate.visibility || foundTemplate.Visibility || foundTemplate.is_public || foundTemplate.isPublic}`)
+            expect(foundTemplate.visibility === 'private' || foundTemplate.Visibility === 'private' || foundTemplate.is_public === false || foundTemplate.isPublic === false).toBe(true)
           } else {
             console.log(`⚠️  Template ${template.templateId} not found in list yet (status: ${template.status}, may still be building)`)
             console.log(`   Total private templates in list: ${templates.length}`)
@@ -161,25 +161,25 @@ describe('API Client - Template Creation from Sandbox', () => {
       const template = await SandboxApi.createTemplateFromSandbox(createdSandbox.sandboxId, {
         name: templateName,
         description: 'Test template from static method',
-        isPublic: false
+        visibility: 'private'
       })
 
       expect(template).toBeDefined()
       expect(template.templateId).toBeDefined()
       expect(template.name).toBe(templateName)
       expect(template.description).toBe('Test template from static method')
-      expect(template.isPublic).toBe(false) // Should be private
+      expect(template.visibility).toBe('private') // Should be private
 
       // Log the template info
       console.log(`✅ Private template created successfully (via static method):`)
       console.log(`   Template ID: ${template.templateId}`)
       console.log(`   Name: ${template.name}`)
       console.log(`   Status: ${template.status}`)
-      console.log(`   Is Public: ${template.isPublic}`)
+      console.log(`   Visibility: ${template.visibility}`)
       console.log(`   Description: ${template.description}`)
       
       // Verify template is private
-      expect(template.isPublic).toBe(false)
+      expect(template.visibility).toBe('private')
       expect(template.templateId).toBeTruthy()
       expect(template.status).toBeDefined()
       
@@ -212,8 +212,8 @@ describe('API Client - Template Creation from Sandbox', () => {
             console.log(`   Template ID: ${foundTemplate.template_id || foundTemplate.templateId}`)
             console.log(`   Name: ${foundTemplate.name}`)
             console.log(`   Status: ${foundTemplate.status}`)
-            console.log(`   Is Public: ${foundTemplate.is_public || foundTemplate.isPublic}`)
-            expect(foundTemplate.is_public === false || foundTemplate.isPublic === false).toBe(true)
+            console.log(`   Visibility: ${foundTemplate.visibility || foundTemplate.Visibility || foundTemplate.is_public || foundTemplate.isPublic}`)
+            expect(foundTemplate.visibility === 'private' || foundTemplate.Visibility === 'private' || foundTemplate.is_public === false || foundTemplate.isPublic === false).toBe(true)
           } else {
             console.log(`⚠️  Template ${template.templateId} not found in list yet (status: ${template.status}, may still be building)`)
             console.log(`   Total private templates in list: ${templates.length}`)
