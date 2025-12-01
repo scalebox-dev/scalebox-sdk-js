@@ -1,3 +1,10 @@
+# [3.8.0](https://github.com/scalebox-dev/scalebox-sdk-js/compare/v3.7.0...v3.8.0) (2025-12-01)
+
+
+### Features
+
+* **api:** replace isPublic with visibility enum for template creation ([dfb904d](https://github.com/scalebox-dev/scalebox-sdk-js/commit/dfb904dcb4975f9ecd6f905beda526e2fe92c5a6))
+
 # [3.7.0](https://github.com/scalebox-dev/scalebox-sdk-js/compare/v3.6.1...v3.7.0) (2025-11-27)
 
 
