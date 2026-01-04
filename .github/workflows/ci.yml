@@ -108,6 +108,7 @@ jobs:
       contents: write
       issues: write
       pull-requests: write
+      id-token: write  # Required for npm Trusted Publishing (OIDC)
     
     steps:
     - name: Checkout code
@@ -126,6 +127,7 @@ jobs:
       with:
         node-version: 20
         cache: 'pnpm'
+        registry-url: 'https://registry.npmjs.org'
     
     - name: Install dependencies
       run: pnpm install --frozen-lockfile
@@ -137,4 +139,5 @@ jobs:
       run: pnpm exec semantic-release
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        # NPM_TOKEN is no longer needed with Trusted Publishing (OIDC)
+        # The OIDC token is automatically used by npm CLI when registry-url is set
