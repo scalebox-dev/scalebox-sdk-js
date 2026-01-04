@@ -1,3 +1,23 @@
+# [4.0.0](https://github.com/scalebox-dev/scalebox-sdk-js/compare/v3.8.0...v4.0.0) (2026-01-04)
+
+
+### Bug Fixes
+
+* **ci:** force npm 11.5.1+ and @semantic-release/npm v13 for OIDC ([da9cf76](https://github.com/scalebox-dev/scalebox-sdk-js/commit/da9cf760fd778136aca336aeae347b83fcaeba73))
+* **ci:** upgrade Node.js and npm for OIDC support ([6932d3a](https://github.com/scalebox-dev/scalebox-sdk-js/commit/6932d3aabb806fc37fec7d92a2d5020fbf072b02))
+
+
+### Features
+
+* **ci:** migrate to npm Trusted Publishing (OIDC) ([ac719d2](https://github.com/scalebox-dev/scalebox-sdk-js/commit/ac719d2f71eee46b81e88d395cad1071f92360c0))
+* **sandbox:** add network proxy country field support ([a48d68d](https://github.com/scalebox-dev/scalebox-sdk-js/commit/a48d68da490a89e8bf927ae86b045622e8e23a33))
+
+
+### BREAKING CHANGES
+
+* **ci:** NPM_TOKEN secret is no longer used. Configure
+Trusted Publisher in npm package settings before merging.
+
 # [3.8.0](https://github.com/scalebox-dev/scalebox-sdk-js/compare/v3.7.0...v3.8.0) (2025-12-01)
 
 
