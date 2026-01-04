@@ -784,6 +784,10 @@ components:
           items:
             $ref: '#/components/schemas/PortConfig'
           description: Optional custom ports (ports not in template). Must have unique port numbers and names.
+        net_proxy_country:
+          type: string
+          enum: [united-states, canada, japan, malaysia, brazil, france, italy, china, hong-kong]
+          description: Network proxy country for sandbox traffic routing (optional)
 
     UpdateSandboxRequest:
       type: object
@@ -925,6 +929,11 @@ components:
           items:
             $ref: '#/components/schemas/PortConfig'
           description: Custom ports added to sandbox
+        net_proxy_country:
+          type: string
+          enum: [united-states, canada, japan, malaysia, brazil, france, italy, china, hong-kong]
+          description: Network proxy country setting
+          nullable: true
         # Kubernetes deployment information
         cluster_id:
           type: string

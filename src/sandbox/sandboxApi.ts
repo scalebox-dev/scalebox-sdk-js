@@ -93,6 +93,23 @@ export interface SandboxOpts extends SandboxApiOpts {
    * ```
    */
   objectStorage?: ObjectStorageConfig
+
+  /**
+   * Network proxy country for sandbox traffic routing.
+   * 
+   * When provided, sandbox network traffic will be routed through a proxy
+   * in the specified country.
+   * 
+   * Supported values: united-states, canada, japan, malaysia, brazil, france, italy, china, hong-kong
+   * 
+   * @example
+   * ```ts
+   * const sandbox = await Sandbox.create('base', {
+   *   netProxyCountry: 'united-states'
+   * })
+   * ```
+   */
+  netProxyCountry?: 'united-states' | 'canada' | 'japan' | 'malaysia' | 'brazil' | 'france' | 'italy' | 'china' | 'hong-kong'
 }
 
 export type SandboxBetaCreateOpts = SandboxOpts & {
@@ -437,7 +454,8 @@ export class SandboxApi {
         secure: opts?.secure ?? true,
         autoPause: opts?.autoPause ?? false,
         isAsync: false, // Default to synchronous creation
-        objectStorage: opts?.objectStorage // Pass through object storage configuration
+        objectStorage: opts?.objectStorage, // Pass through object storage configuration
+        netProxyCountry: opts?.netProxyCountry // Pass through network proxy country configuration
       })
 
       // sandboxDomain must be returned by API, no fallback allowed

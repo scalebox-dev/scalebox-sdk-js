@@ -1000,6 +1000,11 @@ export interface components {
             };
             /** @description Sandbox name */
             name?: string;
+            /**
+             * @description Network proxy country for sandbox traffic routing (optional)
+             * @enum {string}
+             */
+            net_proxy_country?: "united-states" | "canada" | "japan" | "malaysia" | "brazil" | "france" | "italy" | "china" | "hong-kong";
             /** @description Project ID (optional, defaults to user's default project) */
             project_id?: string;
             /**
@@ -1165,6 +1170,11 @@ export interface components {
             name?: string;
             /** @description User namespace ID in the cluster */
             namespace_id?: string | null;
+            /**
+             * @description Network proxy country setting
+             * @enum {string|null}
+             */
+            net_proxy_country?: "united-states" | "canada" | "japan" | "malaysia" | "brazil" | "france" | "italy" | "china" | "hong-kong" | null;
             /** @description Node where pod is scheduled */
             node_name?: string | null;
             owner?: {

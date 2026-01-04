@@ -99,6 +99,9 @@ export interface SandboxInfo {
   ports?: PortConfig[]
   templatePorts?: PortConfig[]
   customPorts?: PortConfig[]
+  
+  // Network proxy configuration
+  netProxyCountry?: 'united-states' | 'canada' | 'japan' | 'malaysia' | 'brazil' | 'france' | 'italy' | 'china' | 'hong-kong'
 }
 
 export interface SandboxMetrics {

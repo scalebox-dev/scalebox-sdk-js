@@ -136,6 +136,8 @@ export class ApiClient {
     objectStorage?: ObjectStorageConfig
     // 自定义端口
     customPorts?: PortConfig[]
+    // 网络代理国家
+    netProxyCountry?: 'united-states' | 'canada' | 'japan' | 'malaysia' | 'brazil' | 'france' | 'italy' | 'china' | 'hong-kong'
   }): Promise<SandboxInfo> {
     // 使用通用转换函数将 camelCase 转换为后端期望的 snake_case
     const backendRequest = convertKeysToSnakeCase({
@@ -153,7 +155,8 @@ export class ApiClient {
       allowInternetAccess: request.allowInternetAccess ?? true, // 将转换为 allow_internet_access
       isAsync: request.isAsync ?? false, // 将转换为 is_async，默认同步
       objectStorage: request.objectStorage, // 将转换为 object_storage
-      customPorts: request.customPorts // 将转换为 custom_ports
+      customPorts: request.customPorts, // 将转换为 custom_ports
+      netProxyCountry: request.netProxyCountry // 将转换为 net_proxy_country
     })
     
     const response = await this.client.POST('/v1/sandboxes', {
@@ -259,7 +262,10 @@ export class ApiClient {
       // Port configuration
       ports: sandboxData.ports || [],
       templatePorts: sandboxData.templatePorts || sandboxData.template_ports || [],
-      customPorts: sandboxData.customPorts || sandboxData.custom_ports || []
+      customPorts: sandboxData.customPorts || sandboxData.custom_ports || [],
+      
+      // Network proxy configuration
+      netProxyCountry: sandboxData.netProxyCountry
     }
   }
 
@@ -366,7 +372,10 @@ export class ApiClient {
       objectStorage: sandboxData.objectStorage ? {
         uri: sandboxData.objectStorage.uri,
         mountPoint: sandboxData.objectStorage.mountPoint
-      } : undefined
+      } : undefined,
+      
+      // Network proxy configuration
+      netProxyCountry: sandboxData.netProxyCountry
     }
   }
 
@@ -629,7 +638,10 @@ export class ApiClient {
       // Port configuration
       ports: sandbox.ports || [],
       templatePorts: sandbox.templatePorts || sandbox.template_ports || [],
-      customPorts: sandbox.customPorts || sandbox.custom_ports || []
+      customPorts: sandbox.customPorts || sandbox.custom_ports || [],
+      
+      // Network proxy configuration
+      netProxyCountry: sandbox.netProxyCountry
     }))
 
     return {
@@ -831,7 +843,10 @@ export class ApiClient {
       } : undefined,
       ports: sandboxData.ports || [],
       templatePorts: sandboxData.templatePorts || sandboxData.template_ports || [],
-      customPorts: sandboxData.customPorts || sandboxData.custom_ports || []
+      customPorts: sandboxData.customPorts || sandboxData.custom_ports || [],
+      
+      // Network proxy configuration
+      netProxyCountry: sandboxData.netProxyCountry
     }
   }
 
@@ -1031,7 +1046,10 @@ export class ApiClient {
       } : undefined,
       ports: sandboxData.ports || [],
       templatePorts: sandboxData.templatePorts || sandboxData.template_ports || [],
-      customPorts: sandboxData.customPorts || sandboxData.custom_ports || []
+      customPorts: sandboxData.customPorts || sandboxData.custom_ports || [],
+      
+      // Network proxy configuration
+      netProxyCountry: sandboxData.netProxyCountry
     }
     
     return sandboxInfo
