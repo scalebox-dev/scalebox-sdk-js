@@ -717,6 +717,38 @@ paths:
                   message:
                     type: string
 
+  /v1/sandbox-regions:
+    get:
+      summary: Get available sandbox regions
+      description: |
+        Get a list of available Sandbox Regions that currently have eligible clusters.
+        This is a public API (no authentication required) to help users discover
+        available regions for locality-based scheduling.
+      tags:
+        - Sandboxes
+      responses:
+        '200':
+          description: List of available sandbox regions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      sandbox_regions:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/SandboxRegion'
+                        description: List of available sandbox regions with eligible clusters
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
 components:
   securitySchemes:
     ApiKeyAuth:
@@ -788,6 +820,9 @@ components:
           type: string
           enum: [united-states, canada, japan, malaysia, brazil, france, italy, china, hong-kong]
           description: Network proxy country for sandbox traffic routing (optional)
+        locality:
+          $ref: '#/components/schemas/LocalityConfig'
+          description: Locality preferences for sandbox scheduling (optional)
 
     UpdateSandboxRequest:
       type: object
@@ -1215,6 +1250,62 @@ components:
         ready_command:
           type: string
           description: Custom readiness probe command
+
+    SandboxRegion:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+          description: Region identifier (e.g., 'us-east', 'eu-west', 'ap-southeast')
+          example: us-east
+        name:
+          type: string
+          description: Human-readable region name (e.g., 'US East (N. Virginia)')
+          example: US East (N. Virginia)
+
+    LocalityConfig:
+      type: object
+      description: |
+        Locality preferences for sandbox scheduling. Controls where the sandbox
+        will be scheduled based on geographical preferences. By default, locality
+        is disabled and the system uses load-balanced scheduling.
+      properties:
+        auto_detect:
+          type: boolean
+          default: false
+          description: |
+            Automatically detect the preferred region from the source IP address.
+            When enabled, the system will infer the region from your IP address using GeoIP.
+            If detection fails or the detected region is not available, the system will
+            fall back to default load-balanced scheduling (unless force is true).
+        region:
+          type: string
+          description: |
+            Explicitly specify a preferred Sandbox Region. When provided, the system
+            will prefer clusters in this region. If no clusters are available in this
+            region and force is false, the system will fall back to other available clusters.
+            Use GET /v1/sandbox-regions to get a list of available regions.
+          example: us-east
+        force:
+          type: boolean
+          default: false
+          description: |
+            **Hard constraint**: fail if the requested region is not available.
+            
+            When force is true and the specified region has no available clusters,
+            sandbox creation will fail with a 409 Conflict error instead of falling back
+            to other regions.
+            
+            **WARNING**: Use this option carefully. If the requested region is unavailable,
+            sandbox creation will fail even if other regions have capacity. This is a
+            hard constraint that prioritizes region preference over availability.
+            
+            **Best practice**: Only use force=true when you have strict compliance or
+            regulatory requirements. For most use cases, use force=false (default) to
+            allow graceful fallback to other available regions.
 
     Error:
       type: object

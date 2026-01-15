@@ -212,3 +212,112 @@ export interface SandboxBetaCreateOpts {
    */
   autoPause?: boolean
 }
+
+/**
+ * Locality configuration for sandbox scheduling
+ * 
+ * Controls where the sandbox will be scheduled based on geographical preferences.
+ * By default, locality is disabled and the system uses load-balanced scheduling.
+ * 
+ * @example
+ * ```ts
+ * // Auto-detect region from source IP
+ * const sandbox = await Sandbox.create('base', {
+ *   locality: {
+ *     autoDetect: true
+ *   }
+ * })
+ * 
+ * // Specify a preferred region
+ * const sandbox = await Sandbox.create('base', {
+ *   locality: {
+ *     region: 'us-east'
+ *   }
+ * })
+ * 
+ * // Force a specific region (will fail if region unavailable)
+ * const sandbox = await Sandbox.create('base', {
+ *   locality: {
+ *     region: 'us-east',
+ *     force: true
+ *   }
+ * })
+ * ```
+ */
+export interface LocalityConfig {
+  /**
+   * Automatically detect the preferred region from the source IP address.
+   * 
+   * When enabled, the system will infer the region from your IP address using GeoIP.
+   * If detection fails or the detected region is not available, the system will
+   * fall back to default load-balanced scheduling (unless `force` is true).
+   * 
+   * @default false
+   */
+  autoDetect?: boolean
+
+  /**
+   * Explicitly specify a preferred Sandbox Region.
+   * 
+   * When provided, the system will prefer clusters in this region.
+   * If no clusters are available in this region and `force` is false,
+   * the system will fall back to other available clusters.
+   * 
+   * Use {@link SandboxApi.getSandboxRegions} to get a list of available regions.
+   * 
+   * @example 'us-east', 'eu-west', 'ap-southeast'
+   */
+  region?: string
+
+  /**
+   * **Hard constraint**: fail if the requested region is not available.
+   * 
+   * When `force` is true and the specified region has no available clusters,
+   * sandbox creation will fail with a conflict error (409) instead of falling back
+   * to other regions.
+   * 
+   * **WARNING**: Use this option carefully. If the requested region is unavailable,
+   * sandbox creation will fail even if other regions have capacity. This is a
+   * hard constraint that prioritizes region preference over availability.
+   * 
+   * **Best practice**: Only use `force: true` when you have strict compliance
+   * or regulatory requirements. For most use cases, use `force: false` (default)
+   * to allow graceful fallback to other available regions.
+   * 
+   * @default false
+   * @example
+   * ```ts
+   * // NOT RECOMMENDED: Hard constraint may cause failures
+   * const sandbox = await Sandbox.create('base', {
+   *   locality: {
+   *     region: 'us-east',
+   *     force: true  // Will fail if us-east is unavailable
+   *   }
+   * })
+   * 
+   * // RECOMMENDED: Best-effort with graceful fallback
+   * const sandbox = await Sandbox.create('base', {
+   *   locality: {
+   *     region: 'us-east',
+   *     force: false  // Falls back to other regions if us-east unavailable
+   *   }
+   * })
+   * ```
+   */
+  force?: boolean
+}
+
+/**
+ * Sandbox region information
+ */
+export interface SandboxRegion {
+  /**
+   * Region identifier (e.g., 'us-east', 'eu-west')
+   */
+  id: string
+
+  /**
+   * Human-readable region name (e.g., 'US East (N. Virginia)')
+   */
+  name: string
+}

@@ -301,6 +301,49 @@ await sandbox.betaPause() // Pause sandbox
 await sandbox.kill() // Close sandbox
 ```
 
+### Locality-Based Scheduling
+
+Control where your sandbox is scheduled based on geographical preferences. By default, the system uses load-balanced scheduling across all available clusters.
+
+```javascript
+import { Sandbox, SandboxApi } from '@scalebox/sdk'
+
+// Get available regions
+const regions = await SandboxApi.getSandboxRegions()
+console.log('Available regions:', regions)
+// Output: [{ id: 'us-east', name: 'US East (N. Virginia)' }, ...]
+
+// Auto-detect region from source IP
+const sandbox1 = await Sandbox.create('code-interpreter', {
+  locality: {
+    autoDetect: true  // Infers region from your IP address
+  }
+})
+
+// Specify a preferred region (best-effort, allows fallback)
+const sandbox2 = await Sandbox.create('code-interpreter', {
+  locality: {
+    region: 'us-east'  // Prefers us-east, but falls back if unavailable
+  }
+})
+
+// WARNING: Hard constraint - use with caution
+// This will fail with a 409 Conflict error if the region is unavailable
+const sandbox3 = await Sandbox.create('code-interpreter', {
+  locality: {
+    region: 'us-east',
+    force: true  // Hard constraint - may cause creation failures
+  }
+})
+```
+
+**Important Notes:**
+- **Default behavior**: If `locality` is not specified, the system uses load-balanced scheduling (recommended for To B products to avoid single-point overheating)
+- **Best-effort mode** (`force: false`, default): If the preferred region is unavailable, the system gracefully falls back to other available regions
+- **Hard constraint mode** (`force: true`): Sandbox creation will fail with a 409 Conflict error if the requested region is unavailable, even if other regions have capacity. **WARNING**: Use with caution.
+- **Use cases for `force: true`**: Strict compliance requirements, regulatory constraints, or data residency requirements
+- **Recommended**: Use `force: false` (default) for most use cases to ensure high availability
+
 ### Pause and Resume Operations
 
 Pause sandboxes to save compute resources while preserving filesystem state. Paused sandboxes don't consume CPU or memory, only storage.

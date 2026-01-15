@@ -1,7 +1,7 @@
 import { ApiClient } from '../api'
 import { ConnectionConfig, DEFAULT_SANDBOX_TIMEOUT_MS } from '../connectionConfig'
 import { ScaleboxError, SandboxError, NotFoundError } from '../errors'
-import type { SandboxInfo, ObjectStorageConfig } from './types'
+import type { SandboxInfo, ObjectStorageConfig, LocalityConfig, SandboxRegion } from './types'
 
 /**
  * Options for request to the Sandbox API.
@@ -110,6 +110,39 @@ export interface SandboxOpts extends SandboxApiOpts {
    * ```
    */
   netProxyCountry?: 'united-states' | 'canada' | 'japan' | 'malaysia' | 'brazil' | 'france' | 'italy' | 'china' | 'hong-kong'
+
+  /**
+   * Locality preferences for sandbox scheduling.
+   * 
+   * Controls where the sandbox will be scheduled based on geographical preferences.
+   * By default, locality is disabled and the system uses load-balanced scheduling.
+   * 
+   * @example
+   * ```ts
+   * // Auto-detect region from source IP
+   * const sandbox = await Sandbox.create('base', {
+   *   locality: {
+   *     autoDetect: true
+   *   }
+   * })
+   * 
+   * // Specify a preferred region (best-effort, allows fallback)
+   * const sandbox = await Sandbox.create('base', {
+   *   locality: {
+   *     region: 'us-east'
+   *   }
+   * })
+   * 
+   * // WARNING: Hard constraint - will fail if region unavailable
+   * const sandbox = await Sandbox.create('base', {
+   *   locality: {
+   *     region: 'us-east',
+   *     force: true  // Use with caution - may cause creation failures
+   *   }
+   * })
+   * ```
+   */
+  locality?: LocalityConfig
 }
 
 export type SandboxBetaCreateOpts = SandboxOpts & {
@@ -455,7 +488,8 @@ export class SandboxApi {
         autoPause: opts?.autoPause ?? false,
         isAsync: false, // Default to synchronous creation
         objectStorage: opts?.objectStorage, // Pass through object storage configuration
-        netProxyCountry: opts?.netProxyCountry // Pass through network proxy country configuration
+        netProxyCountry: opts?.netProxyCountry, // Pass through network proxy country configuration
+        locality: opts?.locality // Pass through locality configuration
       })
 
       // sandboxDomain must be returned by API, no fallback allowed
@@ -633,6 +667,46 @@ export class SandboxApi {
       })
     } catch (error) {
       throw new ScaleboxError(`Failed to create template from sandbox: ${error}`)
+    }
+  }
+
+  /**
+   * Get available Sandbox Regions that have eligible clusters.
+   * 
+   * This is a public API (no authentication required) to help users discover
+   * available regions for locality-based scheduling.
+   * 
+   * @param opts connection options
+   * @returns List of available Sandbox Regions with their IDs and names
+   * 
+   * @example
+   * ```ts
+   * const regions = await SandboxApi.getSandboxRegions()
+   * console.log(regions) // [{ id: 'us-east', name: 'US East (N. Virginia)' }, ...]
+   * 
+   * // Use a region when creating a sandbox
+   * const sandbox = await Sandbox.create('base', {
+   *   locality: {
+   *     region: regions[0].id
+   *   }
+   * })
+   * ```
+   */
+  static async getSandboxRegions(opts?: SandboxApiOpts): Promise<SandboxRegion[]> {
+    const config = new ConnectionConfig({
+      apiKey: opts?.apiKey,
+      apiUrl: opts?.apiUrl,
+      debug: opts?.debug,
+      domain: opts?.domain,
+      requestTimeoutMs: opts?.requestTimeoutMs,
+      headers: opts?.headers
+    })
+    const client = new ApiClient(config)
+
+    try {
+      return await client.getSandboxRegions()
+    } catch (error) {
+      throw new ScaleboxError(`Failed to get sandbox regions: ${error}`)
     }
   }
 }
