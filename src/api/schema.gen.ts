@@ -4,62 +4,6 @@
  */
 
 export interface paths {
-    "/v1/sandbox-regions": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get available sandbox regions
-         * @description Get a list of available Sandbox Regions that currently have eligible clusters.
-         *     This is a public API (no authentication required) to help users discover
-         *     available regions for locality-based scheduling.
-         *
-         */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description List of available sandbox regions */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            data?: {
-                                /** @description List of available sandbox regions with eligible clusters */
-                                sandbox_regions?: components["schemas"]["SandboxRegion"][];
-                            };
-                        };
-                    };
-                };
-                /** @description Internal server error */
-                500: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/v1/sandboxes": {
         parameters: {
             query?: never;
@@ -1001,6 +945,62 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/scalebox-regions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get available scalebox regions
+         * @description Get a list of available Scalebox Regions that currently have eligible clusters.
+         *     This is a public API (no authentication required) to help users discover
+         *     available regions for locality-based scheduling.
+         *
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description List of available scalebox regions */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data?: {
+                                /** @description List of available scalebox regions with eligible clusters */
+                                scalebox_regions?: components["schemas"]["ScaleboxRegion"][];
+                            };
+                        };
+                    };
+                };
+                /** @description Internal server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1124,12 +1124,19 @@ export interface components {
              */
             auto_detect: boolean;
             /**
-             * @description Hard constraint: fail if the requested region is not available.
+             * @description **Hard constraint**: fail if the requested region is not available.
+             *
              *     When force is true and the specified region has no available clusters,
-             *     sandbox creation will fail with a conflict error instead of falling back
-             *     to other regions. Warning: Use this option carefully. If the requested
-             *     region is unavailable, sandbox creation will fail even if other regions
-             *     have capacity.
+             *     sandbox creation will fail with a 409 Conflict error instead of falling back
+             *     to other regions.
+             *
+             *     **WARNING**: Use this option carefully. If the requested region is unavailable,
+             *     sandbox creation will fail even if other regions have capacity. This is a
+             *     hard constraint that prioritizes region preference over availability.
+             *
+             *     **Best practice**: Only use force=true when you have strict compliance or
+             *     regulatory requirements. For most use cases, use force=false (default) to
+             *     allow graceful fallback to other available regions.
              *
              * @default false
              */
@@ -1138,7 +1145,7 @@ export interface components {
              * @description Explicitly specify a preferred Sandbox Region. When provided, the system
              *     will prefer clusters in this region. If no clusters are available in this
              *     region and force is false, the system will fall back to other available clusters.
-             *     Use GET /v1/sandbox-regions to get a list of available regions.
+             *     Use GET /v1/scalebox-regions to get a list of available regions.
              *
              * @example us-east
              */
@@ -1199,18 +1206,6 @@ export interface components {
             service?: string;
             /** @description Deployment status */
             status?: string;
-        };
-        SandboxRegion: {
-            /**
-             * @description Region identifier (e.g., 'us-east', 'eu-west', 'ap-southeast')
-             * @example us-east
-             */
-            id: string;
-            /**
-             * @description Human-readable region name (e.g., 'US East (N. Virginia)')
-             * @example US East (N. Virginia)
-             */
-            name: string;
         };
         SandboxResponse: {
             /**
@@ -1400,6 +1395,18 @@ export interface components {
         SandboxTimeoutRequest: {
             /** @description New timeout in seconds (must be >= already used lifetime) */
             timeout: number;
+        };
+        ScaleboxRegion: {
+            /**
+             * @description Region identifier (e.g., 'us-east', 'eu-west', 'ap-southeast')
+             * @example us-east
+             */
+            id: string;
+            /**
+             * @description Human-readable region name (e.g., 'US East (N. Virginia)')
+             * @example US East (N. Virginia)
+             */
+            name: string;
         };
         SuccessResponse: {
             data?: Record<string, never>;

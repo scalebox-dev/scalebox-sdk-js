@@ -263,7 +263,7 @@ export interface LocalityConfig {
    * If no clusters are available in this region and `force` is false,
    * the system will fall back to other available clusters.
    * 
-   * Use {@link SandboxApi.getSandboxRegions} to get a list of available regions.
+   * Use {@link SandboxApi.getScaleboxRegions} to get a list of available regions.
    * 
    * @example 'us-east', 'eu-west', 'ap-southeast'
    */
@@ -308,9 +308,9 @@ export interface LocalityConfig {
 }
 
 /**
- * Sandbox region information
+ * Scalebox region information
  */
-export interface SandboxRegion {
+export interface ScaleboxRegion {
   /**
    * Region identifier (e.g., 'us-east', 'eu-west')
    */
@@ -321,3 +321,6 @@ export interface SandboxRegion {
    */
   name: string
 }
+
+// Backward-compatible alias
+export type SandboxRegion = ScaleboxRegion

@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeAll } from 'vitest'
 import { SandboxApi } from '../../src/sandbox/sandboxApi'
-import type { SandboxRegion, LocalityConfig } from '../../src/sandbox/types'
+import type { LocalityConfig } from '../../src/sandbox/types'
 
 describe('Locality-based Scheduling', () => {
-  describe('getSandboxRegions', () => {
-    it('should fetch available sandbox regions', async () => {
-      const regions = await SandboxApi.getSandboxRegions()
+  describe('getScaleboxRegions', () => {
+    it('should fetch available scalebox regions', async () => {
+      const regions = await SandboxApi.getScaleboxRegions()
       
       expect(regions).toBeDefined()
       expect(Array.isArray(regions)).toBe(true)
@@ -23,7 +23,7 @@ describe('Locality-based Scheduling', () => {
     }, 30_000)
 
     it('should return regions with valid structure even if empty', async () => {
-      const regions = await SandboxApi.getSandboxRegions()
+      const regions = await SandboxApi.getScaleboxRegions()
       
       expect(regions).toBeDefined()
       expect(Array.isArray(regions)).toBe(true)
@@ -65,7 +65,7 @@ describe('Locality-based Scheduling', () => {
 
     it('should create sandbox with specified region (if available)', async () => {
       // First, get available regions
-      const regions = await SandboxApi.getSandboxRegions()
+      const regions = await SandboxApi.getScaleboxRegions()
       
       if (regions.length === 0) {
         console.log('No regions available, skipping region-specific test')

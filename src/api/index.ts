@@ -1,7 +1,7 @@
 import createClient from 'openapi-fetch'
 import { paths } from './schema.gen'
 import { ConnectionConfig } from '../connectionConfig'
-import { SandboxInfo, SandboxMetrics, SandboxQuery, ObjectStorageConfig, PortConfig, LocalityConfig, SandboxRegion } from '../sandbox/types'
+import { SandboxInfo, SandboxMetrics, SandboxQuery, ObjectStorageConfig, PortConfig, LocalityConfig, ScaleboxRegion } from '../sandbox/types'
 
 /**
  * 键名转换函数 - 前端 camelCase 与后端 snake_case 的双向转换
@@ -1065,33 +1065,34 @@ export class ApiClient {
   }
 
   /**
-   * Get available Sandbox Regions that have eligible clusters.
-   * 
+   * Get available Scalebox Regions that have eligible clusters.
+   *
    * This is a public API (no authentication required) to help users discover
    * available regions for locality-based scheduling.
-   * 
-   * @returns List of available Sandbox Regions with their IDs and names
-   * 
+   *
+   * @returns List of available Scalebox Regions with their IDs and names
+   *
    * @example
    * ```ts
-   * const regions = await client.getSandboxRegions()
+   * const regions = await client.getScaleboxRegions()
    * console.log(regions) // [{ id: 'us-east', name: 'US East (N. Virginia)' }, ...]
    * ```
    */
-  async getSandboxRegions(): Promise<SandboxRegion[]> {
-    const response = await this.client.GET('/v1/sandbox-regions')
+  async getScaleboxRegions(): Promise<ScaleboxRegion[]> {
+    const response = await this.client.GET('/v1/scalebox-regions')
 
     if (response.error) {
-      throw new Error(`Failed to get sandbox regions: ${JSON.stringify(response.error)}`)
+      throw new Error(`Failed to get scalebox regions: ${JSON.stringify(response.error)}`)
     }
 
     // Process response and convert snake_case to camelCase
     const processedResponse = this.processResponse(response) as any
-    const regionsData = processedResponse.data?.data?.sandboxRegions || []
+    const regionsData = processedResponse.data?.data?.scaleboxRegions || []
 
     return regionsData.map((region: any) => ({
       id: region.id || region.region_id || '',
       name: region.name || region.region_name || region.id || ''
     }))
   }
+
 }

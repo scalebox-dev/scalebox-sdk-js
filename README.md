@@ -309,7 +309,7 @@ Control where your sandbox is scheduled based on geographical preferences. By de
 import { Sandbox, SandboxApi } from '@scalebox/sdk'
 
 // Get available regions
-const regions = await SandboxApi.getSandboxRegions()
+const regions = await SandboxApi.getScaleboxRegions()
 console.log('Available regions:', regions)
 // Output: [{ id: 'us-east', name: 'US East (N. Virginia)' }, ...]
 

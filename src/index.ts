@@ -69,6 +69,7 @@ export type {
   SandboxBetaCreateOpts,
   PortConfig,
   LocalityConfig,
+  ScaleboxRegion,
   SandboxRegion
 } from './sandbox/types'
 

@@ -1,7 +1,7 @@
 import { ApiClient } from '../api'
 import { ConnectionConfig, DEFAULT_SANDBOX_TIMEOUT_MS } from '../connectionConfig'
 import { ScaleboxError, SandboxError, NotFoundError } from '../errors'
-import type { SandboxInfo, ObjectStorageConfig, LocalityConfig, SandboxRegion } from './types'
+import type { SandboxInfo, ObjectStorageConfig, LocalityConfig, ScaleboxRegion } from './types'
 
 /**
  * Options for request to the Sandbox API.
@@ -671,19 +671,19 @@ export class SandboxApi {
   }
 
   /**
-   * Get available Sandbox Regions that have eligible clusters.
-   * 
+   * Get available Scalebox Regions that have eligible clusters.
+   *
    * This is a public API (no authentication required) to help users discover
    * available regions for locality-based scheduling.
-   * 
+   *
    * @param opts connection options
-   * @returns List of available Sandbox Regions with their IDs and names
-   * 
+   * @returns List of available Scalebox Regions with their IDs and names
+   *
    * @example
    * ```ts
-   * const regions = await SandboxApi.getSandboxRegions()
+   * const regions = await SandboxApi.getScaleboxRegions()
    * console.log(regions) // [{ id: 'us-east', name: 'US East (N. Virginia)' }, ...]
-   * 
+   *
    * // Use a region when creating a sandbox
    * const sandbox = await Sandbox.create('base', {
    *   locality: {
@@ -692,7 +692,7 @@ export class SandboxApi {
    * })
    * ```
    */
-  static async getSandboxRegions(opts?: SandboxApiOpts): Promise<SandboxRegion[]> {
+  static async getScaleboxRegions(opts?: SandboxApiOpts): Promise<ScaleboxRegion[]> {
     const config = new ConnectionConfig({
       apiKey: opts?.apiKey,
       apiUrl: opts?.apiUrl,
@@ -704,9 +704,9 @@ export class SandboxApi {
     const client = new ApiClient(config)
 
     try {
-      return await client.getSandboxRegions()
+      return await client.getScaleboxRegions()
     } catch (error) {
-      throw new ScaleboxError(`Failed to get sandbox regions: ${error}`)
+      throw new ScaleboxError(`Failed to get scalebox regions: ${error}`)
     }
   }
 }

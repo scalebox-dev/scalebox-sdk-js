@@ -717,18 +717,18 @@ paths:
                   message:
                     type: string
 
-  /v1/sandbox-regions:
+  /v1/scalebox-regions:
     get:
-      summary: Get available sandbox regions
+      summary: Get available scalebox regions
       description: |
-        Get a list of available Sandbox Regions that currently have eligible clusters.
+        Get a list of available Scalebox Regions that currently have eligible clusters.
         This is a public API (no authentication required) to help users discover
         available regions for locality-based scheduling.
       tags:
         - Sandboxes
       responses:
         '200':
-          description: List of available sandbox regions
+          description: List of available scalebox regions
           content:
             application/json:
               schema:
@@ -737,11 +737,11 @@ paths:
                   data:
                     type: object
                     properties:
-                      sandbox_regions:
+                      scalebox_regions:
                         type: array
                         items:
-                          $ref: '#/components/schemas/SandboxRegion'
-                        description: List of available sandbox regions with eligible clusters
+                          $ref: '#/components/schemas/ScaleboxRegion'
+                        description: List of available scalebox regions with eligible clusters
         '500':
           description: Internal server error
           content:
@@ -1251,7 +1251,7 @@ components:
           type: string
           description: Custom readiness probe command
 
-    SandboxRegion:
+    ScaleboxRegion:
       type: object
       required:
         - id
@@ -1287,7 +1287,7 @@ components:
             Explicitly specify a preferred Sandbox Region. When provided, the system
             will prefer clusters in this region. If no clusters are available in this
             region and force is false, the system will fall back to other available clusters.
-            Use GET /v1/sandbox-regions to get a list of available regions.
+            Use GET /v1/scalebox-regions to get a list of available regions.
           example: us-east
         force:
           type: boolean
