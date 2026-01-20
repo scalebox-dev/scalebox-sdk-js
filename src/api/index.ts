@@ -1,7 +1,7 @@
 import createClient from 'openapi-fetch'
 import { paths } from './schema.gen'
 import { ConnectionConfig } from '../connectionConfig'
-import { SandboxInfo, SandboxMetrics, SandboxQuery, ObjectStorageConfig, PortConfig } from '../sandbox/types'
+import { SandboxInfo, SandboxMetrics, SandboxQuery, ObjectStorageConfig, PortConfig, LocalityConfig, ScaleboxRegion } from '../sandbox/types'
 
 /**
  * 键名转换函数 - 前端 camelCase 与后端 snake_case 的双向转换
@@ -90,6 +90,12 @@ export class ApiClient {
       headers['Authorization'] = `Bearer ${config.accessToken}`
     }
     
+    // Add X-Debug header when debug mode is enabled
+    // This triggers distributed tracing on the backend (Jaeger)
+    if (config.debug) {
+      headers['X-Debug'] = 'true'
+    }
+    
     this.client = createClient<paths>({
       baseUrl: config.apiUrl,
       headers
@@ -138,6 +144,8 @@ export class ApiClient {
     customPorts?: PortConfig[]
     // 网络代理国家
     netProxyCountry?: 'united-states' | 'canada' | 'japan' | 'malaysia' | 'brazil' | 'france' | 'italy' | 'china' | 'hong-kong'
+    // Locality preferences for scheduling
+    locality?: LocalityConfig
   }): Promise<SandboxInfo> {
     // 使用通用转换函数将 camelCase 转换为后端期望的 snake_case
     const backendRequest = convertKeysToSnakeCase({
@@ -156,7 +164,8 @@ export class ApiClient {
       isAsync: request.isAsync ?? false, // 将转换为 is_async，默认同步
       objectStorage: request.objectStorage, // 将转换为 object_storage
       customPorts: request.customPorts, // 将转换为 custom_ports
-      netProxyCountry: request.netProxyCountry // 将转换为 net_proxy_country
+      netProxyCountry: request.netProxyCountry, // 将转换为 net_proxy_country
+      locality: request.locality // 将转换为 locality (nested object, keys will be converted)
     })
     
     const response = await this.client.POST('/v1/sandboxes', {
@@ -1054,4 +1063,36 @@ export class ApiClient {
     
     return sandboxInfo
   }
+
+  /**
+   * Get available Scalebox Regions that have eligible clusters.
+   *
+   * This is a public API (no authentication required) to help users discover
+   * available regions for locality-based scheduling.
+   *
+   * @returns List of available Scalebox Regions with their IDs and names
+   *
+   * @example
+   * ```ts
+   * const regions = await client.getScaleboxRegions()
+   * console.log(regions) // [{ id: 'us-east', name: 'US East (N. Virginia)' }, ...]
+   * ```
+   */
+  async getScaleboxRegions(): Promise<ScaleboxRegion[]> {
+    const response = await this.client.GET('/v1/scalebox-regions')
+
+    if (response.error) {
+      throw new Error(`Failed to get scalebox regions: ${JSON.stringify(response.error)}`)
+    }
+
+    // Process response and convert snake_case to camelCase
+    const processedResponse = this.processResponse(response) as any
+    const regionsData = processedResponse.data?.data?.scaleboxRegions || []
+
+    return regionsData.map((region: any) => ({
+      id: region.id || region.region_id || '',
+      name: region.name || region.region_name || region.id || ''
+    }))
+  }
+
 }
