@@ -1,3 +1,29 @@
+# [5.0.0](https://github.com/scalebox-dev/scalebox-sdk-js/compare/v4.0.0...v5.0.0) (2026-01-20)
+
+
+* Feat/locality scheduling support ([#1](https://github.com/scalebox-dev/scalebox-sdk-js/issues/1)) ([04b5a53](https://github.com/scalebox-dev/scalebox-sdk-js/commit/04b5a53aa8aef78a8b726647705a393c4b836ed1))
+
+
+### BREAKING CHANGES
+
+* None - fully backward compatible
+
+* fix(config): rename commitlint config to .cjs for ES module compatibility
+
+Rename commitlint.config.js to commitlint.config.cjs to fix ES module
+compatibility issue. The project uses "type": "module" in package.json,
+so CommonJS config files must use .cjs extension.
+
+* Rename scalebox regions API
+
+* fix(security): Upgrade tar to fix vulnerability
+
+Upgrade grpc-tools to 1.13.1 and add pnpm override
+for tar >=7.5.3 to fix CVE in dependency chain.
+
+The vulnerability was in tar <=7.5.2 used by @mapbox/node-pre-gyp.
+After upgrade, tar is now at 7.5.4 which patches the issue.
+
 # [4.0.0](https://github.com/scalebox-dev/scalebox-sdk-js/compare/v3.8.0...v4.0.0) (2026-01-04)
 
 
