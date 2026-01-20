@@ -7,6 +7,36 @@ import { isIntegrationTest } from '../setup'
 // Skip integration tests if API key is not available
 const skipIfNoApiKey = !process.env.SCALEBOX_API_KEY && !isIntegrationTest
 
+const objectStorageEnv = {
+  uri: process.env.SCALEBOX_OBJECT_STORAGE_URI,
+  mountPoint: process.env.SCALEBOX_OBJECT_STORAGE_MOUNT_POINT,
+  accessKey: process.env.SCALEBOX_OBJECT_STORAGE_ACCESS_KEY,
+  secretKey: process.env.SCALEBOX_OBJECT_STORAGE_SECRET_KEY,
+  region: process.env.SCALEBOX_OBJECT_STORAGE_REGION,
+  endpoint: process.env.SCALEBOX_OBJECT_STORAGE_ENDPOINT
+}
+
+const hasObjectStorageConfig = Object.values(objectStorageEnv).every(Boolean)
+const skipObjectStorageTests =
+  skipIfNoApiKey ||
+  !hasObjectStorageConfig ||
+  process.env.SCALEBOX_SKIP_OBJECT_STORAGE === '1'
+
+function getObjectStorageConfig(): ObjectStorageConfig {
+  if (!hasObjectStorageConfig) {
+    throw new Error('Object storage env vars are not configured')
+  }
+
+  return {
+    uri: objectStorageEnv.uri!,
+    mountPoint: objectStorageEnv.mountPoint!,
+    accessKey: objectStorageEnv.accessKey!,
+    secretKey: objectStorageEnv.secretKey!,
+    region: objectStorageEnv.region!,
+    endpoint: objectStorageEnv.endpoint!
+  }
+}
+
 describe('API Client - Object Storage Mount', () => {
   let client: ApiClient
   let testSandboxId: string | null = null
@@ -32,16 +62,9 @@ describe('API Client - Object Storage Mount', () => {
     }
   })
 
-  describe.skipIf(skipIfNoApiKey)('createSandbox with objectStorage', () => {
+  describe.skipIf(skipObjectStorageTests)('createSandbox with objectStorage', () => {
     it('should create sandbox with object storage mount configuration', async () => {
-      const objectStorageConfig: ObjectStorageConfig = {
-        uri: 's3://scalebox-dev/test/',
-        mountPoint: '/mnt/oss',
-        accessKey: 'YOUR_ACCESS_KEY',
-        secretKey: 'YOUR_SECRET_KEY',
-        region: 'ap-east-1',
-        endpoint: 'https://s3.ap-east-1.amazonaws.com'
-      }
+      const objectStorageConfig = getObjectStorageConfig()
 
       const sandboxInfo = await client.createSandbox({
         template: 'code-interpreter',
@@ -66,33 +89,8 @@ describe('API Client - Object Storage Mount', () => {
       console.log('Object storage info:', sandboxInfo.objectStorage)
     }, 600000) // 10 minutes timeout to allow for object storage mount setup
 
-    it('should create sandbox without object storage (backward compatibility)', async () => {
-      const sandboxInfo = await client.createSandbox({
-        template: 'base',
-        timeout: 300,
-        metadata: { test: 'no-object-storage' }
-      })
-
-      testSandboxId = sandboxInfo.sandboxId
-
-      // Verify basic fields
-      expect(sandboxInfo).toBeDefined()
-      expect(sandboxInfo.sandboxId).toBeDefined()
-
-      // objectStorage should be undefined or null when not provided
-      // Backend may return null instead of undefined
-      expect(sandboxInfo.objectStorage === undefined || sandboxInfo.objectStorage === null).toBe(true)
-    }, 60000)
-
     it('should preserve object storage mount after pause and resume', async () => {
-      const objectStorageConfig: ObjectStorageConfig = {
-        uri: 's3://scalebox-dev/test/',
-        mountPoint: '/mnt/oss',
-        accessKey: 'YOUR_ACCESS_KEY',
-        secretKey: 'YOUR_SECRET_KEY',
-        region: 'ap-east-1',
-        endpoint: 'https://s3.ap-east-1.amazonaws.com'
-      }
+      const objectStorageConfig = getObjectStorageConfig()
 
       // Create sandbox with object storage
       const createdSandbox = await client.createSandbox({
@@ -180,17 +178,30 @@ describe('API Client - Object Storage Mount', () => {
     }, 600000) // 10 minutes timeout to allow for object storage mount setup and pause/resume operations
   })
 
-  describe.skipIf(skipIfNoApiKey)('getSandbox with objectStorage', () => {
+  describe.skipIf(skipIfNoApiKey)('createSandbox without objectStorage', () => {
+    it('should create sandbox without object storage (backward compatibility)', async () => {
+      const sandboxInfo = await client.createSandbox({
+        template: 'base',
+        timeout: 300,
+        metadata: { test: 'no-object-storage' }
+      })
+
+      testSandboxId = sandboxInfo.sandboxId
+
+      // Verify basic fields
+      expect(sandboxInfo).toBeDefined()
+      expect(sandboxInfo.sandboxId).toBeDefined()
+
+      // objectStorage should be undefined or null when not provided
+      // Backend may return null instead of undefined
+      expect(sandboxInfo.objectStorage === undefined || sandboxInfo.objectStorage === null).toBe(true)
+    }, 60000)
+  })
+
+  describe.skipIf(skipObjectStorageTests)('getSandbox with objectStorage', () => {
     it('should return objectStorage field when sandbox has object storage mounted', async () => {
       // First create a sandbox with object storage
-      const objectStorageConfig: ObjectStorageConfig = {
-        uri: 's3://scalebox-dev/test/',
-        mountPoint: '/mnt/oss',
-        accessKey: 'YOUR_ACCESS_KEY',
-        secretKey: 'YOUR_SECRET_KEY',
-        region: 'ap-east-1',
-        endpoint: 'https://s3.ap-east-1.amazonaws.com'
-      }
+      const objectStorageConfig = getObjectStorageConfig()
 
       const createdSandbox = await client.createSandbox({
         template: 'base',
@@ -213,17 +224,10 @@ describe('API Client - Object Storage Mount', () => {
     }, 600000) // 10 minutes timeout to allow for object storage mount setup
   })
 
-  describe.skipIf(skipIfNoApiKey)('listSandboxes with objectStorage', () => {
+  describe.skipIf(skipObjectStorageTests)('listSandboxes with objectStorage', () => {
     it('should include objectStorage field in list response', async () => {
       // Create a sandbox with object storage
-      const objectStorageConfig: ObjectStorageConfig = {
-        uri: 's3://bucket-name/path/prefix/',
-        mountPoint: '/mnt/oss',
-        accessKey: 'YOUR_ACCESS_KEY',
-        secretKey: 'YOUR_SECRET_KEY',
-        region: 'ap-east-1',
-        endpoint: 'https://s3.ap-east-1.amazonaws.com'
-      }
+      const objectStorageConfig = getObjectStorageConfig()
 
       const createdSandbox = await client.createSandbox({
         template: 'base',
