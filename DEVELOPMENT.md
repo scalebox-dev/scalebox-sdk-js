@@ -4,7 +4,7 @@ This document explains how to develop and contribute to the Scalebox JavaScript 
 
 ## Prerequisites
 
-- Node.js 18+
+- Node.js 20+
 - pnpm (recommended) or npm
 - buf CLI (for gRPC code generation)
 

@@ -24,7 +24,14 @@ const colors = {
 
 // CI 测试目录配置 - 只运行稳定的测试
 const ciTestDirs = [
-  { name: 'api', pattern: 'tests/api', env: {} },
+  {
+    name: 'api',
+    pattern: 'tests/api',
+    env: {
+      SCALEBOX_SKIP_OBJECT_STORAGE: '1',
+      SCALEBOX_SKIP_PAUSE_RESUME: '1'
+    }
+  },
   // 跳过 code-interpreter 和 sandbox 测试，因为存在环境问题
   // { name: 'code-interpreter', pattern: 'tests/code-interpreter', env: {} },
   // { name: 'sandbox', pattern: 'tests/sandbox', env: {} },

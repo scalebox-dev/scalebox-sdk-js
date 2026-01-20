@@ -98,6 +98,20 @@ export SCALEBOX_DEBUG=1
 
 # Enable integration tests
 export SCALEBOX_INTEGRATION_TEST=1
+
+# Skip pause/resume tests (CI default)
+export SCALEBOX_SKIP_PAUSE_RESUME=1
+
+# Skip object storage tests (CI default)
+export SCALEBOX_SKIP_OBJECT_STORAGE=1
+
+# Object storage tests (S3-compatible)
+export SCALEBOX_OBJECT_STORAGE_URI="s3://bucket-name/path/prefix/"
+export SCALEBOX_OBJECT_STORAGE_MOUNT_POINT="/mnt/oss"
+export SCALEBOX_OBJECT_STORAGE_ACCESS_KEY="your-access-key"
+export SCALEBOX_OBJECT_STORAGE_SECRET_KEY="your-secret-key"
+export SCALEBOX_OBJECT_STORAGE_REGION="ap-east-1"
+export SCALEBOX_OBJECT_STORAGE_ENDPOINT="https://s3.ap-east-1.amazonaws.com"
 ```
 
 ## Test Configuration
