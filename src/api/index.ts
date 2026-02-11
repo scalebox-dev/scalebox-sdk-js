@@ -2,6 +2,70 @@ import createClient from 'openapi-fetch'
 import { paths } from './schema.gen'
 import { ConnectionConfig } from '../connectionConfig'
 import { SandboxInfo, SandboxMetrics, SandboxQuery, ObjectStorageConfig, PortConfig, LocalityConfig, ScaleboxRegion } from '../sandbox/types'
+import type {
+  TemplateInfo,
+  TemplateListFilters,
+  TemplateListResponse,
+  CreateTemplateRequest,
+  UpdateTemplateRequest,
+  UpdateTemplateStatusRequest,
+  TemplateChainResponse,
+  ShareTemplateRequest,
+  ValidateCustomImageRequest,
+  ValidateCustomImageResponse,
+  DirectImportTemplateRequest,
+  DirectImportTemplateResponse,
+  TemplateImportStatusResponse,
+  ImportJobInfo,
+  ListImportJobsOpts,
+  ListImportJobsResponse
+} from '../template/types'
+
+/** CamelCase batch operation result item (after processResponse) */
+export interface BatchResultItem {
+  sandboxId: string
+  status: string
+  error?: string
+}
+
+/** Response shape for batch delete (backend may return successful_count/failed_count + successful[]/failed[] or results[]) */
+interface BatchDeleteDataShape {
+  total?: number
+  successfulCount?: number
+  failedCount?: number
+  successful?: string[]
+  failed?: Array<{ sandboxId?: string; sandbox_id?: string; error?: string }>
+  results?: Array<{ sandboxId?: string; sandbox_id?: string; status?: string; error?: string }>
+}
+
+/** Response shape for batch terminate/pause/resume (total, successful, failed, results[]) */
+interface BatchOperationDataShape {
+  total?: number
+  successful?: number
+  failed?: number
+  results?: Array<{ sandboxId?: string; sandbox_id?: string; status?: string; error?: string }>
+}
+
+type BatchResultItemRaw = { sandboxId?: string; sandbox_id?: string; status?: string; error?: string }
+
+function normalizeBatchResultItem(r: BatchResultItemRaw): BatchResultItem {
+  return {
+    sandboxId: r.sandboxId ?? r.sandbox_id ?? '',
+    status: r.status ?? 'error',
+    error: r.error
+  }
+}
+
+function formatApiError(prefix: string, err: unknown): string {
+  if (err == null) return `${prefix}: unknown error`
+  if (typeof err === 'object' && 'detail' in err && (err as { detail?: unknown }).detail != null) {
+    return `${prefix}: ${String((err as { detail: unknown }).detail)}`
+  }
+  if (typeof err === 'object' && 'message' in err && typeof (err as { message: unknown }).message === 'string') {
+    return `${prefix}: ${(err as { message: string }).message}`
+  }
+  return `${prefix}: ${JSON.stringify(err)}`
+}
 
 /**
  * 键名转换函数 - 前端 camelCase 与后端 snake_case 的双向转换
@@ -105,16 +169,14 @@ export class ApiClient {
   /**
    * 处理API响应 - 将后端的 snake_case 转换为前端的 camelCase
    */
-  private processResponse<T>(response: any): T {
-    if (response.error) {
-      throw new Error(`API Error: ${JSON.stringify(response.error)}`)
+  private processResponse<T>(response: { error?: unknown; data?: unknown }): T {
+    if (response.error != null) {
+      throw new Error(formatApiError('API request failed', response.error))
     }
-    
-    // 转换响应数据的键名
-    if (response.data) {
-      response.data = convertKeysToCamelCase(response.data)
+    const res = response as { data?: unknown }
+    if (res.data != null && typeof res.data === 'object') {
+      (res as { data: unknown }).data = convertKeysToCamelCase(res.data)
     }
-    
     return response as T
   }
 
@@ -130,6 +192,8 @@ export class ApiClient {
     allowInternetAccess?: boolean
     secure?: boolean
     autoPause?: boolean
+    /** If true, return immediately (sandbox may be starting); if false or omitted, backend waits until running/failed (default). */
+    isAsync?: boolean
     // 扩展参数
     name?: string
     description?: string
@@ -137,7 +201,6 @@ export class ApiClient {
     cpuCount?: number
     memoryMB?: number
     storageGB?: number
-    isAsync?: boolean
     // 对象存储配置
     objectStorage?: ObjectStorageConfig
     // 自定义端口
@@ -161,13 +224,16 @@ export class ApiClient {
       envVars: request.envVars, // 将转换为 env_vars
       secure: request.secure ?? true, // 默认启用安全
       allowInternetAccess: request.allowInternetAccess ?? true, // 将转换为 allow_internet_access
-      isAsync: request.isAsync ?? false, // 将转换为 is_async，默认同步
+      autoPause: request.autoPause ?? false, // 将转换为 auto_pause，超时后 pause 或 terminate
       objectStorage: request.objectStorage, // 将转换为 object_storage
       customPorts: request.customPorts, // 将转换为 custom_ports
       netProxyCountry: request.netProxyCountry, // 将转换为 net_proxy_country
       locality: request.locality // 将转换为 locality (nested object, keys will be converted)
     })
-    
+    if (request.isAsync === true) {
+      (backendRequest as Record<string, unknown>).is_async = true
+    }
+
     const response = await this.client.POST('/v1/sandboxes', {
       body: backendRequest
     })
@@ -226,6 +292,15 @@ export class ApiClient {
       resumedAt: sandboxData.resumedAt ? new Date(sandboxData.resumedAt) : undefined,
       pauseTimeoutAt: sandboxData.pauseTimeoutAt ? new Date(sandboxData.pauseTimeoutAt) : undefined,
       totalPausedSeconds: sandboxData.totalPausedSeconds,
+      totalRunningSeconds: sandboxData.totalRunningSeconds,
+      actualTotalRunningSeconds: sandboxData.actualTotalRunningSeconds,
+      actualTotalPausedSeconds: sandboxData.actualTotalPausedSeconds,
+      
+      // Persistence (plan-based)
+      persistenceDays: sandboxData.persistenceDays,
+      persistenceExpiresAt: sandboxData.persistenceExpiresAt ?? null,
+      persistenceDaysRemaining: sandboxData.persistenceDaysRemaining ?? null,
+      autoPause: sandboxData.autoPause ?? false,
       
       // Kubernetes deployment information
       clusterId: sandboxData.clusterId,
@@ -274,7 +349,8 @@ export class ApiClient {
       customPorts: sandboxData.customPorts || sandboxData.custom_ports || [],
       
       // Network proxy configuration
-      netProxyCountry: sandboxData.netProxyCountry
+      netProxyCountry: sandboxData.netProxyCountry,
+      networkProxy: sandboxData.networkProxy ?? null
     }
   }
 
@@ -340,6 +416,15 @@ export class ApiClient {
       resumedAt: sandboxData.resumedAt ? new Date(sandboxData.resumedAt) : undefined,
       pauseTimeoutAt: sandboxData.pauseTimeoutAt ? new Date(sandboxData.pauseTimeoutAt) : undefined,
       totalPausedSeconds: sandboxData.totalPausedSeconds,
+      totalRunningSeconds: sandboxData.totalRunningSeconds,
+      actualTotalRunningSeconds: sandboxData.actualTotalRunningSeconds,
+      actualTotalPausedSeconds: sandboxData.actualTotalPausedSeconds,
+      
+      // Persistence (plan-based)
+      persistenceDays: sandboxData.persistenceDays,
+      persistenceExpiresAt: sandboxData.persistenceExpiresAt ?? null,
+      persistenceDaysRemaining: sandboxData.persistenceDaysRemaining ?? null,
+      autoPause: sandboxData.autoPause ?? false,
       
       // Kubernetes deployment information
       clusterId: sandboxData.clusterId,
@@ -383,8 +468,86 @@ export class ApiClient {
         mountPoint: sandboxData.objectStorage.mountPoint
       } : undefined,
       
+      // Port configuration
+      ports: sandboxData.ports || [],
+      templatePorts: sandboxData.templatePorts || sandboxData.template_ports || [],
+      customPorts: sandboxData.customPorts || sandboxData.custom_ports || [],
+      
       // Network proxy configuration
-      netProxyCountry: sandboxData.netProxyCountry
+      netProxyCountry: sandboxData.netProxyCountry,
+      networkProxy: sandboxData.networkProxy ?? null
+    }
+  }
+
+  /**
+   * Get sandbox status (lightweight) - for polling only. Returns only sandbox_id, status, substatus, reason, updated_at.
+   * Use this instead of getSandbox for status polling to reduce payload.
+   */
+  async getSandboxStatus(sandboxId: string): Promise<{
+    sandboxId: string
+    status: string
+    substatus?: string | null
+    reason?: string | null
+    updatedAt: string
+  }> {
+    const response = await this.client.GET('/v1/sandboxes/{sandbox_id}/status', {
+      params: { path: { sandbox_id: sandboxId } }
+    })
+
+    const err = 'error' in response ? response.error : undefined
+    if (err != null) {
+      throw new Error(formatApiError('Failed to get sandbox status', err))
+    }
+
+    const processedResponse = this.processResponse(response) as any
+    const data = processedResponse.data?.data ?? processedResponse.data
+    if (!data) {
+      throw new Error('Invalid response: missing status data')
+    }
+    return {
+      sandboxId: (data.sandboxId ?? data.sandbox_id ?? sandboxId) as string,
+      status: (data.status ?? 'created') as string,
+      substatus: data.substatus ?? null,
+      reason: data.reason ?? null,
+      updatedAt: (data.updatedAt ?? data.updated_at ?? new Date().toISOString()) as string
+    }
+  }
+
+  /**
+   * Poll getSandboxStatus until status is in targetStatuses or timeout. Uses lightweight status endpoint.
+   * @param sandboxId sandbox ID
+   * @param targetStatuses e.g. ['running','failed'] or ['paused','failed']
+   * @param opts timeoutMs (default 120000), intervalMs (default 2000), signal (AbortSignal)
+   * @returns final status object (including failed if caller includes it in targetStatuses)
+   * @throws on timeout
+   */
+  async waitUntilStatus(
+    sandboxId: string,
+    targetStatuses: string[],
+    opts?: { timeoutMs?: number; intervalMs?: number; signal?: AbortSignal }
+  ): Promise<{ sandboxId: string; status: string; substatus?: string | null; reason?: string | null; updatedAt: string }> {
+    const timeoutMs = opts?.timeoutMs ?? 120000
+    const intervalMs = opts?.intervalMs ?? 2000
+    const deadline = Date.now() + timeoutMs
+    const set = new Set(targetStatuses.map(s => s.toLowerCase()))
+
+    while (true) {
+      if (opts?.signal?.aborted) {
+        throw new Error(`waitUntilStatus aborted`)
+      }
+      if (Date.now() >= deadline) {
+        const last = await this.getSandboxStatus(sandboxId).catch(() => null)
+        throw new Error(
+          `waitUntilStatus timed out after ${timeoutMs}ms. Last status: ${last?.status ?? 'unknown'}`
+        )
+      }
+      const statusResp = await this.getSandboxStatus(sandboxId)
+      if (set.has(statusResp.status.toLowerCase())) {
+        return statusResp
+      }
+      const jitterMax = Math.min(500, Math.floor(intervalMs * 0.1))
+      const jitter = jitterMax > 0 ? Math.floor(Math.random() * jitterMax) : 0
+      await new Promise(r => setTimeout(r, intervalMs + jitter))
     }
   }
 
@@ -407,6 +570,111 @@ export class ApiClient {
     const processedResponse = this.processResponse(response) as any
     // DELETE 操作返回 { success: true, data: {...}, message: "..." } 结构
     return processedResponse.data?.data || processedResponse.data || {}
+  }
+
+  /**
+   * Batch delete sandboxes.
+   * @param sandboxIds List of sandbox IDs to delete
+   * @param options force - force deletion even if running (default false)
+   */
+  async batchDelete(
+    sandboxIds: string[],
+    options?: { force?: boolean }
+  ): Promise<{ total: number; successful: number; failed: number; results: BatchResultItem[] }> {
+    const response = await this.client.POST('/v1/sandboxes/batch-delete', {
+      body: { sandbox_ids: sandboxIds, force: options?.force ?? false }
+    })
+    const err = 'error' in response ? response.error : undefined
+    if (err != null) {
+      throw new Error(formatApiError('Batch delete failed', err))
+    }
+    const processedResponse = this.processResponse<{ data?: { data?: BatchDeleteDataShape } }>(response)
+    const data: BatchDeleteDataShape | undefined = processedResponse.data?.data ?? (processedResponse.data as BatchDeleteDataShape | undefined)
+    if (!data) return { total: 0, successful: 0, failed: 0, results: [] }
+    const successful = data.successfulCount ?? (Array.isArray(data.successful) ? data.successful.length : 0)
+    const failed = data.failedCount ?? (Array.isArray(data.failed) ? data.failed.length : 0)
+    const results: BatchResultItem[] = (data.results ?? []).map(normalizeBatchResultItem)
+    if (results.length === 0 && (Array.isArray(data.successful) || Array.isArray(data.failed))) {
+      for (const id of data.successful ?? []) results.push({ sandboxId: id, status: 'success' })
+      for (const f of data.failed ?? []) results.push(normalizeBatchResultItem({ sandbox_id: f?.sandbox_id ?? f?.sandboxId, status: 'error', error: f?.error }))
+    }
+    return {
+      total: data.total ?? (successful + failed),
+      successful,
+      failed,
+      results
+    }
+  }
+
+  /**
+   * Batch terminate sandboxes.
+   * @param sandboxIds List of sandbox IDs to terminate
+   * @param options force - force termination even if running (default false)
+   */
+  async batchTerminate(
+    sandboxIds: string[],
+    options?: { force?: boolean }
+  ): Promise<{ total: number; successful: number; failed: number; results: BatchResultItem[] }> {
+    const response = await this.client.POST('/v1/sandboxes/batch-terminate', {
+      body: { sandbox_ids: sandboxIds, force: options?.force ?? false }
+    })
+    const err = 'error' in response ? response.error : undefined
+    if (err != null) {
+      throw new Error(formatApiError('Batch terminate failed', err))
+    }
+    const processedResponse = this.processResponse<{ data?: { data?: BatchOperationDataShape } }>(response)
+    const data: BatchOperationDataShape | undefined = processedResponse.data?.data ?? (processedResponse.data as BatchOperationDataShape | undefined)
+    if (!data) return { total: 0, successful: 0, failed: 0, results: [] }
+    return {
+      total: data.total ?? 0,
+      successful: data.successful ?? 0,
+      failed: data.failed ?? 0,
+      results: (data.results ?? []).map(normalizeBatchResultItem)
+    }
+  }
+
+  /**
+   * Batch pause sandboxes (running -> paused).
+   */
+  async batchPause(sandboxIds: string[]): Promise<{ total: number; successful: number; failed: number; results: BatchResultItem[] }> {
+    const response = await this.client.POST('/v1/sandboxes/batch-pause', {
+      body: { sandbox_ids: sandboxIds }
+    })
+    const err = 'error' in response ? response.error : undefined
+    if (err != null) {
+      throw new Error(formatApiError('Batch pause failed', err))
+    }
+    const processedResponse = this.processResponse<{ data?: { data?: BatchOperationDataShape } }>(response)
+    const data: BatchOperationDataShape | undefined = processedResponse.data?.data ?? (processedResponse.data as BatchOperationDataShape | undefined)
+    if (!data) return { total: 0, successful: 0, failed: 0, results: [] }
+    return {
+      total: data.total ?? 0,
+      successful: data.successful ?? 0,
+      failed: data.failed ?? 0,
+      results: (data.results ?? []).map(normalizeBatchResultItem)
+    }
+  }
+
+  /**
+   * Batch resume sandboxes (paused -> running).
+   */
+  async batchResume(sandboxIds: string[]): Promise<{ total: number; successful: number; failed: number; results: BatchResultItem[] }> {
+    const response = await this.client.POST('/v1/sandboxes/batch-resume', {
+      body: { sandbox_ids: sandboxIds }
+    })
+    const err = 'error' in response ? response.error : undefined
+    if (err != null) {
+      throw new Error(formatApiError('Batch resume failed', err))
+    }
+    const processedResponse = this.processResponse<{ data?: { data?: BatchOperationDataShape } }>(response)
+    const data: BatchOperationDataShape | undefined = processedResponse.data?.data ?? (processedResponse.data as BatchOperationDataShape | undefined)
+    if (!data) return { total: 0, successful: 0, failed: 0, results: [] }
+    return {
+      total: data.total ?? 0,
+      successful: data.successful ?? 0,
+      failed: data.failed ?? 0,
+      results: (data.results ?? []).map(normalizeBatchResultItem)
+    }
   }
 
   /**
@@ -601,6 +869,15 @@ export class ApiClient {
       resumedAt: sandbox.resumedAt ? new Date(sandbox.resumedAt) : undefined,
       pauseTimeoutAt: sandbox.pauseTimeoutAt ? new Date(sandbox.pauseTimeoutAt) : undefined,
       totalPausedSeconds: sandbox.totalPausedSeconds,
+      totalRunningSeconds: sandbox.totalRunningSeconds,
+      actualTotalRunningSeconds: sandbox.actualTotalRunningSeconds,
+      actualTotalPausedSeconds: sandbox.actualTotalPausedSeconds,
+      
+      // Persistence (plan-based)
+      persistenceDays: sandbox.persistenceDays,
+      persistenceExpiresAt: sandbox.persistenceExpiresAt ?? null,
+      persistenceDaysRemaining: sandbox.persistenceDaysRemaining ?? null,
+      autoPause: sandbox.autoPause ?? false,
       
       // Kubernetes deployment information
       clusterId: sandbox.clusterId,
@@ -650,7 +927,8 @@ export class ApiClient {
       customPorts: sandbox.customPorts || sandbox.custom_ports || [],
       
       // Network proxy configuration
-      netProxyCountry: sandbox.netProxyCountry
+      netProxyCountry: sandbox.netProxyCountry,
+      networkProxy: sandbox.networkProxy ?? null
     }))
 
     return {
@@ -821,6 +1099,13 @@ export class ApiClient {
       resumedAt: sandboxData.resumedAt ? new Date(sandboxData.resumedAt) : undefined,
       pauseTimeoutAt: sandboxData.pauseTimeoutAt ? new Date(sandboxData.pauseTimeoutAt) : undefined,
       totalPausedSeconds: sandboxData.totalPausedSeconds,
+      totalRunningSeconds: sandboxData.totalRunningSeconds,
+      actualTotalRunningSeconds: sandboxData.actualTotalRunningSeconds,
+      actualTotalPausedSeconds: sandboxData.actualTotalPausedSeconds,
+      persistenceDays: sandboxData.persistenceDays,
+      persistenceExpiresAt: sandboxData.persistenceExpiresAt ?? null,
+      persistenceDaysRemaining: sandboxData.persistenceDaysRemaining ?? null,
+      autoPause: sandboxData.autoPause ?? false,
       clusterId: sandboxData.clusterId,
       namespaceId: sandboxData.namespaceId,
       podName: sandboxData.podName,
@@ -855,7 +1140,8 @@ export class ApiClient {
       customPorts: sandboxData.customPorts || sandboxData.custom_ports || [],
       
       // Network proxy configuration
-      netProxyCountry: sandboxData.netProxyCountry
+      netProxyCountry: sandboxData.netProxyCountry,
+      networkProxy: sandboxData.networkProxy ?? null
     }
   }
 
@@ -909,39 +1195,45 @@ export class ApiClient {
   }
 
   /**
-   * Pause sandbox
+   * Pause sandbox.
+   * Default (sync): backend waits until paused (or failed) before returning; no client polling.
+   * With isAsync: true, POST returns immediately; use waitUntilStatus(sandboxId, ['paused','failed']) to poll.
    */
-  async pauseSandbox(sandboxId: string): Promise<void> {
+  async pauseSandbox(sandboxId: string, opts?: { timeoutMs?: number; isAsync?: boolean }): Promise<void> {
+    const body: Record<string, unknown> = {}
+    if (opts?.isAsync === true) body.is_async = true
+
     const response = await this.client.POST('/v1/sandboxes/{sandbox_id}/pause' as any, {
-      params: { path: { sandbox_id: sandboxId } }
+      params: { path: { sandbox_id: sandboxId } },
+      body: Object.keys(body).length > 0 ? body : undefined
     })
 
     if (response.error) {
-      throw new Error(`Failed to pause sandbox: ${JSON.stringify(response.error)}`)
+      throw new Error(formatApiError('Failed to pause sandbox', response.error))
     }
+    // Sync: backend already waited until paused. Async: caller may use waitUntilStatus.
   }
 
   /**
-   * @deprecated This method is deprecated, please use {@link connectSandbox} instead
-   * 
-   * Resume sandbox
-   * @param sandboxId sandbox ID
-   * @param timeoutMs optional timeout in milliseconds
-   * Note: backend resume endpoint currently does not accept timeout parameter, timeout is automatically calculated by state machine based on pause duration
-   * This parameter is reserved for future possible extensions and is currently ignored
-   * 
-   * @see {@link connectSandbox} - Recommended unified connect endpoint that automatically handles running or paused sandboxes
+   * @deprecated Use {@link connectSandbox} instead for unified connect (handles running or paused).
+   *
+   * Resume sandbox. Default (sync): backend waits until running before returning.
+   * With isAsync: true, POST returns immediately; use waitUntilStatus to poll.
+   *
+   * **Breaking change (v6):** signature changed from `(sandboxId, timeoutMs?)` to `(sandboxId, opts?)`.
+   * Old positional callers must migrate: `resumeSandbox(id, { timeoutMs })`.
    */
-  async resumeSandbox(sandboxId: string, timeoutMs?: number): Promise<void> {
-    // Backend resume endpoint does not accept timeout parameter, timeout is automatically calculated by state machine
-    // timeoutMs parameter is reserved for future possible extensions, but is not currently sent to backend
+  async resumeSandbox(sandboxId: string, opts?: { timeoutMs?: number; isAsync?: boolean }): Promise<void> {
+    const body: Record<string, unknown> = {}
+    if (opts?.isAsync === true) body.is_async = true
+
     const response = await this.client.POST('/v1/sandboxes/{sandbox_id}/resume' as any, {
-      params: { path: { sandbox_id: sandboxId } }
-      // Note: backend does not accept body parameters, timeout is automatically calculated by state machine based on pause duration
+      params: { path: { sandbox_id: sandboxId } },
+      body: Object.keys(body).length > 0 ? body : undefined
     })
 
     if (response.error) {
-      throw new Error(`Failed to resume sandbox: ${JSON.stringify(response.error)}`)
+      throw new Error(formatApiError('Failed to resume sandbox', response.error))
     }
   }
 
@@ -1024,6 +1316,13 @@ export class ApiClient {
       resumedAt: sandboxData.resumedAt ? new Date(sandboxData.resumedAt) : undefined,
       pauseTimeoutAt: sandboxData.pauseTimeoutAt ? new Date(sandboxData.pauseTimeoutAt) : undefined,
       totalPausedSeconds: sandboxData.totalPausedSeconds,
+      totalRunningSeconds: sandboxData.totalRunningSeconds,
+      actualTotalRunningSeconds: sandboxData.actualTotalRunningSeconds,
+      actualTotalPausedSeconds: sandboxData.actualTotalPausedSeconds,
+      persistenceDays: sandboxData.persistenceDays,
+      persistenceExpiresAt: sandboxData.persistenceExpiresAt ?? null,
+      persistenceDaysRemaining: sandboxData.persistenceDaysRemaining ?? null,
+      autoPause: sandboxData.autoPause ?? false,
       clusterId: sandboxData.clusterId,
       namespaceId: sandboxData.namespaceId,
       podName: sandboxData.podName,
@@ -1058,7 +1357,8 @@ export class ApiClient {
       customPorts: sandboxData.customPorts || sandboxData.custom_ports || [],
       
       // Network proxy configuration
-      netProxyCountry: sandboxData.netProxyCountry
+      netProxyCountry: sandboxData.netProxyCountry,
+      networkProxy: sandboxData.networkProxy ?? null
     }
     
     return sandboxInfo
@@ -1093,6 +1393,245 @@ export class ApiClient {
       id: region.id || region.region_id || '',
       name: region.name || region.region_name || region.id || ''
     }))
+  }
+
+  // ---------------------------------------------------------------------------
+  // Template API
+  // ---------------------------------------------------------------------------
+
+  async listTemplates(filters?: TemplateListFilters): Promise<TemplateListResponse> {
+    const params: Record<string, string> = {}
+    if (filters?.usable === true) params.usable = 'true'
+    if (filters?.status) params.status = filters.status
+    if (filters?.visibility) params.visibility = filters.visibility
+    if (filters?.name) params.name = filters.name
+    const query = new URLSearchParams(params).toString()
+    const path = query ? `/v1/templates?${query}` : '/v1/templates'
+    const response = await this.client.GET(path as any)
+    if (response.error) throw new Error(formatApiError('Failed to list templates', response.error))
+    const processed = this.processResponse(response) as { data?: { data?: { templates?: unknown[]; total?: number } } }
+    const data = processed.data?.data ?? {}
+    return {
+      templates: (data.templates ?? []).map((t: unknown) => convertKeysToCamelCase(t)) as TemplateInfo[],
+      total: data.total ?? 0
+    }
+  }
+
+  async getTemplate(templateId: string): Promise<TemplateInfo> {
+    const response = await this.client.GET('/v1/templates/{template_id}' as any, {
+      params: { path: { template_id: templateId } }
+    })
+    if (response.error) throw new Error(formatApiError('Failed to get template', response.error))
+    const processed = this.processResponse(response) as { data?: { data?: unknown } }
+    return convertKeysToCamelCase(processed.data?.data ?? {}) as TemplateInfo
+  }
+
+  async createTemplate(req: CreateTemplateRequest): Promise<TemplateInfo> {
+    const body = convertKeysToSnakeCase(req)
+    const response = await this.client.POST('/v1/templates' as any, { body })
+    if (response.error) throw new Error(formatApiError('Failed to create template', response.error))
+    const processed = this.processResponse(response) as { data?: { data?: unknown } }
+    return convertKeysToCamelCase(processed.data?.data ?? {}) as TemplateInfo
+  }
+
+  async updateTemplate(templateId: string, req: UpdateTemplateRequest): Promise<TemplateInfo> {
+    const body = convertKeysToSnakeCase(req)
+    const response = await this.client.PUT('/v1/templates/{template_id}' as any, {
+      params: { path: { template_id: templateId } },
+      body
+    })
+    if (response.error) throw new Error(formatApiError('Failed to update template', response.error))
+    const processed = this.processResponse(response) as { data?: { data?: unknown } }
+    return convertKeysToCamelCase(processed.data?.data ?? {}) as TemplateInfo
+  }
+
+  async deleteTemplate(templateId: string): Promise<void> {
+    const response = await this.client.DELETE('/v1/templates/{template_id}' as any, {
+      params: { path: { template_id: templateId } }
+    })
+    if (response.error) throw new Error(formatApiError('Failed to delete template', response.error))
+  }
+
+  async updateTemplateStatus(templateId: string, data: UpdateTemplateStatusRequest): Promise<TemplateInfo> {
+    const body = convertKeysToSnakeCase(data)
+    const response = await this.client.PUT('/v1/templates/{template_id}/status' as any, {
+      params: { path: { template_id: templateId } },
+      body
+    })
+    if (response.error) throw new Error(formatApiError('Failed to update template status', response.error))
+    const processed = this.processResponse(response) as { data?: { data?: unknown } }
+    return convertKeysToCamelCase(processed.data?.data ?? {}) as TemplateInfo
+  }
+
+  async validateTemplate(templateId: string): Promise<unknown> {
+    const response = await this.client.POST('/v1/templates/{template_id}/validate' as any, {
+      params: { path: { template_id: templateId } }
+    })
+    if (response.error) throw new Error(formatApiError('Failed to validate template', response.error))
+    const processed = this.processResponse(response) as { data?: { data?: unknown } }
+    return processed.data?.data
+  }
+
+  async getTemplateDockerfile(templateId: string): Promise<string> {
+    const base = this.config.apiUrl.replace(/\/$/, '')
+    const url = `${base}/v1/templates/${encodeURIComponent(templateId)}/dockerfile`
+    const headers: Record<string, string> = { Accept: 'text/plain' }
+    if (this.config.apiKey) headers['X-API-KEY'] = this.config.apiKey
+    else if (this.config.accessToken) headers['Authorization'] = `Bearer ${this.config.accessToken}`
+    const res = await fetch(url, { headers })
+    if (!res.ok) {
+      const text = await res.text()
+      throw new Error(`Failed to get template dockerfile: ${res.status} ${text}`)
+    }
+    return res.text()
+  }
+
+  async getTemplateChain(templateId: string): Promise<TemplateChainResponse> {
+    const response = await this.client.GET('/v1/templates/{template_id}/chain' as any, {
+      params: { path: { template_id: templateId } }
+    })
+    if (response.error) throw new Error(formatApiError('Failed to get template chain', response.error))
+    const processed = this.processResponse(response) as { data?: { data?: { chain?: unknown[]; depth?: number } } }
+    const data = processed.data?.data ?? {}
+    return {
+      chain: (data.chain ?? []).map((t: unknown) => convertKeysToCamelCase(t)),
+      depth: data.depth ?? 0
+    }
+  }
+
+  async getPrivateImageStorageUsage(): Promise<unknown> {
+    const response = await this.client.GET('/v1/templates/storage-usage' as any)
+    if (response.error) throw new Error(formatApiError('Failed to get storage usage', response.error))
+    const processed = this.processResponse(response) as { data?: { data?: unknown } }
+    return processed.data?.data
+  }
+
+  async shareTemplate(templateId: string, opts?: ShareTemplateRequest): Promise<TemplateInfo> {
+    const body = opts ? convertKeysToSnakeCase(opts) : undefined
+    const response = await this.client.POST('/v1/templates/{template_id}/share' as any, {
+      params: { path: { template_id: templateId } },
+      body
+    })
+    if (response.error) throw new Error(formatApiError('Failed to share template', response.error))
+    const processed = this.processResponse(response) as { data?: { data?: unknown } }
+    return convertKeysToCamelCase(processed.data?.data ?? {}) as TemplateInfo
+  }
+
+  async unshareTemplate(templateId: string): Promise<TemplateInfo> {
+    const response = await this.client.POST('/v1/templates/{template_id}/unshare' as any, {
+      params: { path: { template_id: templateId } }
+    })
+    if (response.error) throw new Error(formatApiError('Failed to unshare template', response.error))
+    const processed = this.processResponse(response) as { data?: { data?: unknown } }
+    return convertKeysToCamelCase(processed.data?.data ?? {}) as TemplateInfo
+  }
+
+  async validateCustomImage(req: ValidateCustomImageRequest): Promise<ValidateCustomImageResponse> {
+    const body = convertKeysToSnakeCase(req)
+    const response = await this.client.POST('/v1/templates/validate-custom-image' as any, { body })
+    if (response.error) {
+      const err = response.error as { valid?: boolean; data?: unknown; detail?: unknown }
+      if (typeof err === 'object' && (err.valid === false || (err.data != null && typeof err.data === 'object'))) {
+        return convertKeysToCamelCase(err.data ?? err) as ValidateCustomImageResponse
+      }
+      throw new Error(formatApiError('Failed to validate custom image', response.error))
+    }
+    const processed = this.processResponse(response) as { data?: { data?: unknown } }
+    return convertKeysToCamelCase(processed.data?.data ?? {}) as ValidateCustomImageResponse
+  }
+
+  async directImportTemplate(req: DirectImportTemplateRequest): Promise<DirectImportTemplateResponse> {
+    const body = convertKeysToSnakeCase(req)
+    const response = await this.client.POST('/v1/templates/import' as any, { body })
+    if (response.error) throw new Error(formatApiError('Failed to start direct import', response.error))
+    const processed = this.processResponse(response) as { data?: { data?: unknown } }
+    return convertKeysToCamelCase(processed.data?.data ?? {}) as DirectImportTemplateResponse
+  }
+
+  async importExistingTemplate(templateId: string): Promise<{ message?: string }> {
+    const response = await this.client.POST('/v1/templates/{template_id}/import' as any, {
+      params: { path: { template_id: templateId } }
+    })
+    if (response.error) throw new Error(formatApiError('Failed to start template import', response.error))
+    const processed = this.processResponse(response) as { data?: { data?: unknown } }
+    return convertKeysToCamelCase(processed.data?.data ?? {}) as { message?: string }
+  }
+
+  async getTemplateImportStatus(templateId: string): Promise<TemplateImportStatusResponse> {
+    const response = await this.client.GET('/v1/templates/{template_id}/import' as any, {
+      params: { path: { template_id: templateId } }
+    })
+    if (response.error) throw new Error(formatApiError('Failed to get template import status', response.error))
+    const processed = this.processResponse(response) as { data?: { data?: unknown } }
+    return convertKeysToCamelCase(processed.data?.data ?? {}) as TemplateImportStatusResponse
+  }
+
+  async cancelTemplateImport(templateId: string): Promise<{ jobId: string; status: string; message?: string }> {
+    const response = await this.client.DELETE('/v1/templates/{template_id}/import' as any, {
+      params: { path: { template_id: templateId } }
+    })
+    if (response.error) throw new Error(formatApiError('Failed to cancel template import', response.error))
+    const processed = this.processResponse(response) as { data?: { data?: unknown } }
+    return convertKeysToCamelCase(processed.data?.data ?? {}) as { jobId: string; status: string; message?: string }
+  }
+
+  async getImportJobByID(jobId: string): Promise<ImportJobInfo> {
+    const response = await this.client.GET('/v1/import-jobs/{job_id}' as any, {
+      params: { path: { job_id: jobId } }
+    })
+    if (response.error) throw new Error(formatApiError('Failed to get import job', response.error))
+    const processed = this.processResponse(response) as { data?: { data?: unknown } }
+    return convertKeysToCamelCase(processed.data?.data ?? {}) as ImportJobInfo
+  }
+
+  async listImportJobs(opts?: ListImportJobsOpts): Promise<ListImportJobsResponse> {
+    const params: Record<string, string> = {}
+    if (opts?.limit != null) params.limit = String(opts.limit)
+    if (opts?.offset != null) params.offset = String(opts.offset)
+    if (opts?.status) params.status = opts.status
+    if (opts?.templateId) params.template_id = opts.templateId
+    const query = new URLSearchParams(params).toString()
+    const path = query ? `/v1/import-jobs?${query}` : '/v1/import-jobs'
+    const response = await this.client.GET(path as any)
+    if (response.error) throw new Error(formatApiError('Failed to list import jobs', response.error))
+    const processed = this.processResponse(response) as { data?: { data?: { jobs?: unknown[]; total?: number; limit?: number; offset?: number } } }
+    const data = processed.data?.data ?? {}
+    return {
+      jobs: (data.jobs ?? []).map((j: unknown) => convertKeysToCamelCase(j)) as ImportJobInfo[],
+      total: data.total ?? 0,
+      limit: data.limit ?? 20,
+      offset: data.offset ?? 0
+    }
+  }
+
+  async cancelImportJob(jobId: string): Promise<{ jobId: string; status: string; message?: string }> {
+    const response = await this.client.DELETE('/v1/import-jobs/{job_id}' as any, {
+      params: { path: { job_id: jobId } }
+    })
+    if (response.error) throw new Error(formatApiError('Failed to cancel import job', response.error))
+    const processed = this.processResponse(response) as { data?: { data?: unknown } }
+    return convertKeysToCamelCase(processed.data?.data ?? {}) as { jobId: string; status: string; message?: string }
+  }
+
+  /**
+   * Poll getTemplateImportStatus until status is completed, failed, or cancelled (or timeout).
+   * Default timeout 10 min, interval 5 s.
+   */
+  async waitUntilImportComplete(
+    templateId: string,
+    opts?: { timeoutMs?: number; intervalMs?: number }
+  ): Promise<TemplateImportStatusResponse> {
+    const timeoutMs = opts?.timeoutMs ?? 600_000
+    const intervalMs = opts?.intervalMs ?? 5000
+    const deadline = Date.now() + timeoutMs
+    const terminal = new Set(['completed', 'failed', 'cancelled'])
+    while (Date.now() < deadline) {
+      const status = await this.getTemplateImportStatus(templateId)
+      if (terminal.has(status.status)) return status
+      await new Promise(r => setTimeout(r, intervalMs))
+    }
+    const last = await this.getTemplateImportStatus(templateId)
+    throw new Error(`Template import did not complete within ${timeoutMs}ms; last status: ${last.status}`)
   }
 
 }

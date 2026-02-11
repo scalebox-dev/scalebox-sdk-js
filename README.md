@@ -380,6 +380,8 @@ const connectedSandbox = await Sandbox.connect(sandboxId)
 - Batch processing with gaps
 - Cost optimization for infrequently used sandboxes
 
+**Sandbox API notes (low-level):** Create, pause, and resume default to **synchronous** behaviour: the backend waits until the operation reaches a terminal state (e.g. running, paused) before returning. Pass `isAsync: true` (createSandbox request) or `opts: { isAsync: true }` (pauseSandbox/resumeSandbox) to return immediately and poll with `getSandboxStatus` or `waitUntilStatus` if needed.
+
 ### Filesystem Operations
 ```javascript
 // Read file

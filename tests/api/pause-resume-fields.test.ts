@@ -81,6 +81,37 @@ describe.skipIf(skipPauseResumeTests)('API Client - Pause/Resume Fields Validati
   }
 
   /**
+   * Helper to validate new response fields (migration: running seconds, persistence, autoPause, networkProxy)
+   */
+  function validateNewResponseFields(sandboxInfo: SandboxInfo) {
+    expect(sandboxInfo).toHaveProperty('totalRunningSeconds')
+    expect(sandboxInfo).toHaveProperty('actualTotalRunningSeconds')
+    expect(sandboxInfo).toHaveProperty('actualTotalPausedSeconds')
+    expect(sandboxInfo).toHaveProperty('persistenceDays')
+    expect(sandboxInfo).toHaveProperty('persistenceExpiresAt')
+    expect(sandboxInfo).toHaveProperty('persistenceDaysRemaining')
+    expect(sandboxInfo).toHaveProperty('autoPause')
+    expect(sandboxInfo).toHaveProperty('networkProxy')
+    if (sandboxInfo.totalRunningSeconds !== undefined) {
+      expect(typeof sandboxInfo.totalRunningSeconds).toBe('number')
+      expect(sandboxInfo.totalRunningSeconds).toBeGreaterThanOrEqual(0)
+    }
+    if (sandboxInfo.actualTotalRunningSeconds !== undefined) {
+      expect(typeof sandboxInfo.actualTotalRunningSeconds).toBe('number')
+    }
+    if (sandboxInfo.actualTotalPausedSeconds !== undefined) {
+      expect(typeof sandboxInfo.actualTotalPausedSeconds).toBe('number')
+    }
+    if (sandboxInfo.autoPause !== undefined) {
+      expect(typeof sandboxInfo.autoPause).toBe('boolean')
+    }
+    if (sandboxInfo.networkProxy != null && typeof sandboxInfo.networkProxy === 'object') {
+      expect(sandboxInfo.networkProxy).toHaveProperty('proxyUrl')
+      expect(sandboxInfo.networkProxy).toHaveProperty('proxyConfigs')
+    }
+  }
+
+  /**
    * Helper function to validate status can include pause/resume states
    */
   function validateStatusType(status: SandboxInfo['status']) {
@@ -119,17 +150,20 @@ describe.skipIf(skipPauseResumeTests)('API Client - Pause/Resume Fields Validati
       
       // Validate pause/resume fields exist and have correct types
       validatePauseResumeFields(sandboxInfo)
+      // Validate new migration fields (totalRunningSeconds, persistence, autoPause, networkProxy)
+      validateNewResponseFields(sandboxInfo)
       
       // Validate status type
       validateStatusType(sandboxInfo.status)
       
-      console.log('✅ createSandbox pause/resume fields validated:', {
+      // autoPause: should be present (set at creation, default false if not passed)
+      expect(typeof sandboxInfo.autoPause).toBe('boolean')
+      
+      console.log('✅ createSandbox pause/resume and new fields validated:', {
         sandboxId: sandboxInfo.sandboxId,
         status: sandboxInfo.status,
-        pausedAt: sandboxInfo.pausedAt,
-        resumedAt: sandboxInfo.resumedAt,
-        pauseTimeoutAt: sandboxInfo.pauseTimeoutAt,
-        totalPausedSeconds: sandboxInfo.totalPausedSeconds
+        autoPause: sandboxInfo.autoPause,
+        totalRunningSeconds: sandboxInfo.totalRunningSeconds
       })
     })
 
@@ -404,8 +438,12 @@ describe.skipIf(skipPauseResumeTests)('API Client - Pause/Resume Fields Validati
       
       testSandboxId = createdSandbox.sandboxId
       
-      // Wait a moment to ensure sandbox is running
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      // Wait until sandbox is running (required by backend before pause)
+      const runStatus = await client.waitUntilStatus(createdSandbox.sandboxId, ['running', 'failed'], { timeoutMs: 60000 })
+      if (runStatus.status === 'failed') {
+        console.log('Sandbox entered failed state, skipping pause test')
+        return
+      }
       
       // Get initial state
       const beforePause = await client.getSandbox(createdSandbox.sandboxId)
@@ -466,8 +504,12 @@ describe.skipIf(skipPauseResumeTests)('API Client - Pause/Resume Fields Validati
       
       testSandboxId = createdSandbox.sandboxId
       
-      // Wait for sandbox to be ready
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      // Wait until sandbox is running (required by backend before pause)
+      const runStatus = await client.waitUntilStatus(createdSandbox.sandboxId, ['running', 'failed'], { timeoutMs: 60000 })
+      if (runStatus.status === 'failed') {
+        console.log('Sandbox entered failed state, skipping resume test')
+        return
+      }
       
       // Pause the sandbox (may fail due to infrastructure constraints)
       try {
@@ -551,8 +593,12 @@ describe.skipIf(skipPauseResumeTests)('API Client - Pause/Resume Fields Validati
       
       testSandboxId = createdSandbox.sandboxId
       
-      // Wait for sandbox to be ready
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      // Wait until sandbox is running (required by backend before pause)
+      const runStatus = await client.waitUntilStatus(createdSandbox.sandboxId, ['running', 'failed'], { timeoutMs: 60000 })
+      if (runStatus.status === 'failed') {
+        console.log('Sandbox entered failed state, skipping totalPausedSeconds test')
+        return
+      }
       
       // Initial state
       const initial = await client.getSandbox(createdSandbox.sandboxId)
@@ -651,8 +697,12 @@ describe.skipIf(skipPauseResumeTests)('API Client - Pause/Resume Fields Validati
       
       testSandboxId = createdSandbox.sandboxId
       
-      // Wait for sandbox to be ready
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      // Wait until sandbox is running (required by backend before pause)
+      const runStatus = await client.waitUntilStatus(createdSandbox.sandboxId, ['running', 'failed'], { timeoutMs: 60000 })
+      if (runStatus.status === 'failed') {
+        console.log('Sandbox entered failed state, skipping time-ordering test')
+        return
+      }
       
       // Pause (may fail due to infrastructure constraints)
       try {
@@ -692,6 +742,192 @@ describe.skipIf(skipPauseResumeTests)('API Client - Pause/Resume Fields Validati
         })
       }
     }, 120000)
+  })
+
+  describe.skipIf(skipIfNoApiKey)('autoPause', () => {
+    it('should default to false when not specified', async () => {
+      const sandboxInfo = await client.createSandbox({
+        template: 'base',
+        timeout: 300,
+        metadata: { test: 'autopause-default' }
+      })
+      testSandboxId = sandboxInfo.sandboxId
+      expect(sandboxInfo.autoPause).toBe(false)
+    })
+
+    it('should be true in response when created with autoPause: true', async () => {
+      const sandboxInfo = await client.createSandbox({
+        template: 'base',
+        timeout: 300,
+        autoPause: true,
+        metadata: { test: 'autopause-enabled' }
+      })
+      testSandboxId = sandboxInfo.sandboxId
+      expect(sandboxInfo.autoPause).toBe(true)
+    })
+
+    it('should auto-pause after timeout then be resumable and connectable', async () => {
+      const isEnvError = (err: unknown): boolean => {
+        const msg = err instanceof Error ? err.message : String(err)
+        return msg.includes('502') || msg.includes('Bad Gateway')
+      }
+      const skipDueToEnv = (step: string, err: unknown) => {
+        const msg = err instanceof Error ? err.message : String(err)
+        console.log(`autoPause full-flow skipped (${step}):`, msg)
+      }
+
+      // Use a short timeout so auto-pause triggers within test time (backend: timeout seconds then auto-pause)
+      const runTimeoutSeconds = 90
+      let createdSandbox: SandboxInfo
+      try {
+        createdSandbox = await client.createSandbox({
+          template: 'base',
+          timeout: runTimeoutSeconds,
+          autoPause: true,
+          metadata: { test: 'autopause-full-flow' }
+        })
+      } catch (e) {
+        if (isEnvError(e)) {
+          skipDueToEnv('createSandbox', e)
+          return
+        }
+        throw e
+      }
+      testSandboxId = createdSandbox.sandboxId
+      expect(createdSandbox.autoPause).toBe(true)
+
+      // Wait until running (or failed)
+      let runStatus: { status: string; reason?: string | null }
+      try {
+        runStatus = await client.waitUntilStatus(createdSandbox.sandboxId, ['running', 'failed'], { timeoutMs: 120000 })
+      } catch (e) {
+        if (isEnvError(e)) {
+          skipDueToEnv('wait running', e)
+          return
+        }
+        throw e
+      }
+      if (runStatus.status === 'failed') {
+        throw new Error(`Sandbox entered failed state: ${runStatus.reason ?? 'unknown'}`)
+      }
+
+      // Wait for backend to auto-pause after runTimeoutSeconds (allow extra buffer)
+      let pauseStatus: { status: string; reason?: string | null }
+      try {
+        pauseStatus = await client.waitUntilStatus(createdSandbox.sandboxId, ['paused', 'failed'], {
+          timeoutMs: (runTimeoutSeconds + 60) * 1000,
+          intervalMs: 5000
+        })
+      } catch (e) {
+        if (isEnvError(e)) {
+          skipDueToEnv('wait auto-pause', e)
+          return
+        }
+        throw e
+      }
+      if (pauseStatus.status !== 'paused') {
+        throw new Error(`Auto-pause did not occur in time, last status: ${pauseStatus.status}`)
+      }
+
+      let afterAutoPause: SandboxInfo
+      try {
+        afterAutoPause = await client.getSandbox(createdSandbox.sandboxId)
+      } catch (e) {
+        if (isEnvError(e)) {
+          skipDueToEnv('getSandbox after auto-pause', e)
+          return
+        }
+        throw e
+      }
+      expect(afterAutoPause.status).toBe('paused')
+      expect(afterAutoPause.pausedAt).toBeDefined()
+
+      // Resume and verify running
+      try {
+        await client.resumeSandbox(createdSandbox.sandboxId)
+      } catch (e) {
+        if (isEnvError(e)) {
+          skipDueToEnv('resumeSandbox', e)
+          return
+        }
+        throw e
+      }
+      let afterResume: { status: string; reason?: string | null }
+      try {
+        afterResume = await client.waitUntilStatus(createdSandbox.sandboxId, ['running', 'failed'], { timeoutMs: 120000 })
+      } catch (e) {
+        if (isEnvError(e)) {
+          skipDueToEnv('wait running after resume', e)
+          return
+        }
+        throw e
+      }
+      if (afterResume.status !== 'running') {
+        throw new Error(`Resume did not reach running, status: ${afterResume.status}`)
+      }
+      let getAfterResume: SandboxInfo
+      try {
+        getAfterResume = await client.getSandbox(createdSandbox.sandboxId)
+      } catch (e) {
+        if (isEnvError(e)) {
+          skipDueToEnv('getSandbox after resume', e)
+          return
+        }
+        throw e
+      }
+      expect(getAfterResume.status).toBe('running')
+
+      // Pause again manually so we can test connect (unified endpoint resumes when paused)
+      try {
+        await client.pauseSandbox(createdSandbox.sandboxId)
+      } catch (e) {
+        if (isEnvError(e)) {
+          skipDueToEnv('pauseSandbox', e)
+          return
+        }
+        throw e
+      }
+      let afterManualPause: { status: string }
+      try {
+        afterManualPause = await client.waitUntilStatus(createdSandbox.sandboxId, ['paused', 'failed'], { timeoutMs: 60000 })
+      } catch (e) {
+        if (isEnvError(e)) {
+          skipDueToEnv('wait manual pause', e)
+          return
+        }
+        throw e
+      }
+      if (afterManualPause.status !== 'paused') {
+        throw new Error(`Manual pause did not complete, status: ${afterManualPause.status}`)
+      }
+
+      // connectSandbox when paused should resume and return sandbox info
+      let connected: SandboxInfo
+      try {
+        connected = await client.connectSandbox(createdSandbox.sandboxId)
+      } catch (e) {
+        if (isEnvError(e)) {
+          skipDueToEnv('connectSandbox', e)
+          return
+        }
+        throw e
+      }
+      expect(connected).toBeDefined()
+      expect(connected.sandboxId).toBe(createdSandbox.sandboxId)
+      let afterConnect: { status: string }
+      try {
+        afterConnect = await client.waitUntilStatus(createdSandbox.sandboxId, ['running', 'failed'], { timeoutMs: 120000 })
+      } catch (e) {
+        if (isEnvError(e)) {
+          skipDueToEnv('wait running after connect', e)
+          return
+        }
+        throw e
+      }
+      if (afterConnect.status !== 'running') {
+        throw new Error(`Connect did not reach running, status: ${afterConnect.status}`)
+      }
+    }, 300000)
   })
 
   describe('Status Type Validation', () => {

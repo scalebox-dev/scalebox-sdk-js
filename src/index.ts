@@ -130,6 +130,33 @@ export type {
 } from './code-interpreter/types'
 export type { ConnectionConfigOpts } from './connectionConfig'
 
+// Template API type exports
+export type {
+  TemplateInfo,
+  TemplateListFilters,
+  TemplateListResponse,
+  CreateTemplateRequest,
+  UpdateTemplateRequest,
+  UpdateTemplateStatusRequest,
+  DirectImportTemplateRequest,
+  DirectImportTemplateResponse,
+  ValidateCustomImageRequest,
+  ValidateCustomImageResponse,
+  ShareTemplateRequest,
+  TemplateChainResponse,
+  TemplateChainItem,
+  ImportJobInfo,
+  TemplateImportStatusResponse,
+  ListImportJobsOpts,
+  ListImportJobsResponse,
+  TemplateStatus,
+  TemplateVisibility,
+  TemplateSource,
+  CustomImageSource,
+  ImportJobStatus,
+  TemplatePortConfig
+} from './template/types'
+
 // High-Level Session API type exports
 export type {
   ExecutionRequest,

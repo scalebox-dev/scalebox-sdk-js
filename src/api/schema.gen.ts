@@ -682,6 +682,59 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/sandboxes/{sandbox_id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get sandbox status (lightweight)
+         * @description Returns only sandbox_id, status, substatus, reason, updated_at for polling. Use this instead of GET /v1/sandboxes/{sandbox_id} for status polling to reduce payload.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Sandbox ID */
+                    sandbox_id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Sandbox status */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data?: components["schemas"]["SandboxStatusResponse"];
+                        };
+                    };
+                };
+                /** @description Sandbox not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/sandboxes/{sandbox_id}/stop": {
         parameters: {
             query?: never;
@@ -904,6 +957,144 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/sandboxes/batch-pause": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Batch pause sandboxes
+         * @description Pause multiple running sandboxes in a single request
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["BatchIdsRequest"];
+                };
+            };
+            responses: {
+                /** @description Batch pause initiated */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data?: components["schemas"]["BatchOperationResponse"];
+                            message?: string;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/sandboxes/batch-resume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Batch resume sandboxes
+         * @description Resume multiple paused sandboxes in a single request
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["BatchIdsRequest"];
+                };
+            };
+            responses: {
+                /** @description Batch resume initiated */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data?: components["schemas"]["BatchOperationResponse"];
+                            message?: string;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/sandboxes/batch-terminate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Batch terminate sandboxes
+         * @description Terminate multiple sandboxes in a single request
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["BatchTerminateRequest"];
+                };
+            };
+            responses: {
+                /** @description Batch terminate initiated */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data?: components["schemas"]["BatchOperationResponse"];
+                            message?: string;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/sandboxes/stats": {
         parameters: {
             query?: never;
@@ -1027,12 +1218,43 @@ export interface components {
             /** @description Number of successfully deleted sandboxes */
             successful_count?: number;
         };
+        BatchIdsRequest: {
+            /** @description List of sandbox IDs */
+            sandbox_ids: string[];
+        };
+        BatchOperationResponse: {
+            failed?: number;
+            results?: components["schemas"]["BatchOperationResult"][];
+            successful?: number;
+            total?: number;
+        };
+        BatchOperationResult: {
+            /** @description Error message when status is error */
+            error?: string;
+            sandbox_id?: string;
+            /** @enum {string} */
+            status?: "success" | "error";
+        };
+        BatchTerminateRequest: {
+            /**
+             * @description Force termination even if sandboxes are running
+             * @default false
+             */
+            force: boolean;
+            /** @description List of sandbox IDs to terminate */
+            sandbox_ids: string[];
+        };
         CreateSandboxRequest: {
             /**
              * @description Internet access setting
              * @default true
              */
             allow_internet_access: boolean;
+            /**
+             * @description If true, timeout causes auto-pause; if false, timeout causes termination (IMMUTABLE)
+             * @default false
+             */
+            auto_pause: boolean;
             /** @description Number of CPU cores */
             cpu_count?: number;
             /** @description Optional custom ports (ports not in template). Must have unique port numbers and names. */
@@ -1043,11 +1265,6 @@ export interface components {
             env_vars?: {
                 [key: string]: string;
             };
-            /**
-             * @description When true, return immediately; when false, wait for running/failed state
-             * @default false
-             */
-            is_async: boolean;
             /** @description Locality preferences for sandbox scheduling (optional) */
             locality?: components["schemas"]["LocalityConfig"];
             /** @description Memory in MB */
@@ -1208,6 +1425,13 @@ export interface components {
             status?: string;
         };
         SandboxResponse: {
+            /** @description Dynamic total paused time including current pause if paused */
+            actual_total_paused_seconds?: number;
+            /**
+             * Format: int64
+             * @description Dynamic total running time including current phase if running
+             */
+            actual_total_running_seconds?: number;
             /**
              * Format: date-time
              * @description When sandbox was allocated to cluster
@@ -1215,6 +1439,8 @@ export interface components {
             allocation_time?: string | null;
             /** @description Internet access setting */
             allow_internet_access?: boolean;
+            /** @description If true, timeout causes auto-pause; if false, termination (IMMUTABLE) */
+            auto_pause?: boolean;
             /** @description Kubernetes cluster ID where sandbox is deployed */
             cluster_id?: string | null;
             /** @description Container name within the pod */
@@ -1275,6 +1501,17 @@ export interface components {
              * @enum {string|null}
              */
             net_proxy_country?: "united-states" | "canada" | "japan" | "malaysia" | "brazil" | "france" | "italy" | "china" | "hong-kong" | null;
+            /** @description Network proxy config (when token generated) */
+            network_proxy?: {
+                proxy_configs?: {
+                    host?: string;
+                    password?: string;
+                    port?: number;
+                    username?: string;
+                };
+                /** @description Full proxy URL (username:password@host:port) */
+                proxy_url?: string;
+            } | null;
             /** @description Node where pod is scheduled */
             node_name?: string | null;
             owner?: {
@@ -1289,6 +1526,15 @@ export interface components {
             };
             /** @description Owner user ID */
             owner_user_id?: string;
+            /** @description Number of days sandbox data persists after termination (from plan) */
+            persistence_days?: number;
+            /** @description Days remaining until data deletion */
+            persistence_days_remaining?: number | null;
+            /**
+             * Format: date-time
+             * @description When sandbox data will be permanently deleted
+             */
+            persistence_expires_at?: string | null;
             /** @description Pod IP address */
             pod_ip?: string | null;
             /** @description Kubernetes pod name */
@@ -1328,7 +1574,7 @@ export interface components {
              * @description Current sandbox status
              * @enum {string}
              */
-            status?: "created" | "starting" | "running" | "terminating" | "terminated" | "failed";
+            status?: "created" | "starting" | "running" | "pausing" | "paused" | "resuming" | "terminating" | "terminated" | "failed";
             /**
              * Format: date-time
              * @description When sandbox stopped
@@ -1354,6 +1600,10 @@ export interface components {
              * @description When sandbox will timeout
              */
             timeout_at?: string | null;
+            /** @description Cumulative paused time across all pause periods (persistent) */
+            total_paused_seconds?: number;
+            /** @description Cumulative running time across all running phases (persistent) */
+            total_running_seconds?: number;
             /**
              * Format: date-time
              * @description Last update timestamp
@@ -1391,6 +1641,28 @@ export interface components {
              * @description Total uptime in hours
              */
             total_uptime_hours?: number;
+        };
+        /** @description Lightweight status for polling (GET /v1/sandboxes/{sandbox_id}/status) */
+        SandboxStatusResponse: {
+            /** @description Reason for current status or failure */
+            reason?: string | null;
+            /** @description Sandbox ID */
+            sandbox_id?: string;
+            /**
+             * @description Current sandbox status
+             * @enum {string}
+             */
+            status?: "created" | "starting" | "running" | "pausing" | "paused" | "resuming" | "terminating" | "terminated" | "failed";
+            /**
+             * @description Detailed substatus for transitional states
+             * @enum {string|null}
+             */
+            substatus?: "allocating" | "deploying" | "initializing" | "waiting_ready" | "cleaning_resources" | "cleaning_data" | null;
+            /**
+             * Format: date-time
+             * @description Last update timestamp
+             */
+            updated_at?: string;
         };
         SandboxTimeoutRequest: {
             /** @description New timeout in seconds (must be >= already used lifetime) */

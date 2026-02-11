@@ -477,7 +477,8 @@ export class SandboxApi {
     }
 
     try {
-      // Use standard camelCase interface
+      // Default sync: backend blocks until running/failed before returning.
+      // No SDK-side polling needed — the response already reflects the terminal state.
       const sandboxInfo = await client.createSandbox({
         template: template,
         timeout: timeoutSeconds,
@@ -486,23 +487,20 @@ export class SandboxApi {
         allowInternetAccess: opts?.allowInternetAccess ?? true,
         secure: opts?.secure ?? true,
         autoPause: opts?.autoPause ?? false,
-        isAsync: false, // Default to synchronous creation
-        objectStorage: opts?.objectStorage, // Pass through object storage configuration
-        netProxyCountry: opts?.netProxyCountry, // Pass through network proxy country configuration
-        locality: opts?.locality // Pass through locality configuration
+        objectStorage: opts?.objectStorage,
+        netProxyCountry: opts?.netProxyCountry,
+        locality: opts?.locality
       })
 
-      // sandboxDomain must be returned by API, no fallback allowed
+      if (sandboxInfo.status === 'failed') {
+        throw new ScaleboxError('Sandbox creation failed')
+      }
       if (!sandboxInfo.sandboxDomain) {
         throw new ScaleboxError('Sandbox creation failed: sandboxDomain not returned from API')
       }
-
-      // envdAccessToken must be returned by API, used for gRPC authentication
       if (!sandboxInfo.envdAccessToken) {
         throw new ScaleboxError('Sandbox creation failed: envdAccessToken not returned from API')
       }
-
-      // Return the full sandbox info
       return sandboxInfo
     } catch (error) {
       throw new ScaleboxError(`Failed to create sandbox: ${error}`)
@@ -549,9 +547,8 @@ export class SandboxApi {
     const client = new ApiClient(config, sandboxId)
 
     try {
-      // Note: backend resume endpoint does not accept timeout parameter
-      // Timeout is automatically calculated by backend state machine based on pause duration
-      // If you need to set timeout, use connect endpoint or setTimeout method
+      // Backend resume is sync by default (waits until running).
+      // timeoutMs is not sent to backend; use connectSandbox for timeout control.
       await client.resumeSandbox(sandboxId)
       return true
     } catch (error) {

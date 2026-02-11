@@ -231,8 +231,7 @@ describe('API Client - Template Creation from Sandbox', () => {
       const createdSandbox = await client.createSandbox({
         template: 'base',
         timeout: 300,
-        metadata: { test: 'create-template-fail' },
-        isAsync: true
+        metadata: { test: 'create-template-fail' }
       })
 
       testSandboxId = createdSandbox.sandboxId

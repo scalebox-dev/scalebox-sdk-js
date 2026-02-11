@@ -234,6 +234,117 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /v1/sandboxes/{sandbox_id}/status:
+    get:
+      summary: Get sandbox status (lightweight)
+      description: Returns only sandbox_id, status, substatus, reason, updated_at for polling. Use this instead of GET /v1/sandboxes/{sandbox_id} for status polling to reduce payload.
+      tags:
+        - Sandboxes
+      parameters:
+        - name: sandbox_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Sandbox ID
+      responses:
+        '200':
+          description: Sandbox status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SandboxStatusResponse'
+        '404':
+          description: Sandbox not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/sandboxes/{sandbox_id}/pause:
+    post:
+      summary: Pause a running sandbox
+      description: Pause a running sandbox. Default (sync) waits until paused or failed. Pass is_async in body to return immediately.
+      tags:
+        - Sandboxes
+      parameters:
+        - name: sandbox_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Sandbox ID
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                is_async:
+                  type: boolean
+                  default: false
+                  description: When true, return immediately; when false, wait until paused/failed
+      responses:
+        '200':
+          description: Sandbox paused (sync) or pause initiated (async)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '404':
+          description: Sandbox not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/sandboxes/{sandbox_id}/resume:
+    post:
+      summary: Resume a paused sandbox
+      description: Resume a paused sandbox. Default (sync) waits until running or failed. Pass is_async in body to return immediately. Deprecated - prefer /connect endpoint.
+      deprecated: true
+      tags:
+        - Sandboxes
+      parameters:
+        - name: sandbox_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Sandbox ID
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                is_async:
+                  type: boolean
+                  default: false
+                  description: When true, return immediately; when false, wait until running/failed
+      responses:
+        '200':
+          description: Sandbox resumed (sync) or resume initiated (async)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '404':
+          description: Sandbox not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
   /v1/sandboxes/{sandbox_id}/timeout:
     put:
       summary: Update sandbox timeout
@@ -717,6 +828,81 @@ paths:
                   message:
                     type: string
 
+  /v1/sandboxes/batch-terminate:
+    post:
+      summary: Batch terminate sandboxes
+      description: Terminate multiple sandboxes in a single request
+      tags:
+        - Sandboxes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchTerminateRequest'
+      responses:
+        '202':
+          description: Batch terminate initiated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/BatchOperationResponse'
+                  message:
+                    type: string
+
+  /v1/sandboxes/batch-pause:
+    post:
+      summary: Batch pause sandboxes
+      description: Pause multiple running sandboxes in a single request
+      tags:
+        - Sandboxes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchIdsRequest'
+      responses:
+        '202':
+          description: Batch pause initiated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/BatchOperationResponse'
+                  message:
+                    type: string
+
+  /v1/sandboxes/batch-resume:
+    post:
+      summary: Batch resume sandboxes
+      description: Resume multiple paused sandboxes in a single request
+      tags:
+        - Sandboxes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchIdsRequest'
+      responses:
+        '202':
+          description: Batch resume initiated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/BatchOperationResponse'
+                  message:
+                    type: string
+
   /v1/scalebox-regions:
     get:
       summary: Get available scalebox regions
@@ -807,10 +993,10 @@ components:
           type: boolean
           default: true
           description: Internet access setting
-        is_async:
+        auto_pause:
           type: boolean
           default: false
-          description: When true, return immediately; when false, wait for running/failed state
+          description: If true, timeout causes auto-pause; if false, timeout causes termination (IMMUTABLE)
         custom_ports:
           type: array
           items:
@@ -843,6 +1029,31 @@ components:
           type: integer
           minimum: 1
           description: New timeout in seconds (must be >= already used lifetime)
+
+    SandboxStatusResponse:
+      type: object
+      description: Lightweight status for polling (GET /v1/sandboxes/{sandbox_id}/status)
+      properties:
+        sandbox_id:
+          type: string
+          description: Sandbox ID
+        status:
+          type: string
+          enum: [created, starting, running, pausing, paused, resuming, terminating, terminated, failed]
+          description: Current sandbox status
+        substatus:
+          type: string
+          enum: [allocating, deploying, initializing, waiting_ready, cleaning_resources, cleaning_data]
+          nullable: true
+          description: Detailed substatus for transitional states
+        reason:
+          type: string
+          nullable: true
+          description: Reason for current status or failure
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
 
     SandboxResponse:
       type: object
@@ -901,7 +1112,7 @@ components:
           description: Environment variables
         status:
           type: string
-          enum: [created, starting, running, terminating, terminated, failed]
+          enum: [created, starting, running, pausing, paused, resuming, terminating, terminated, failed]
           description: Current sandbox status
         substatus:
           type: string
@@ -949,6 +1160,53 @@ components:
         uptime:
           type: integer
           description: Uptime in seconds
+        total_running_seconds:
+          type: integer
+          description: Cumulative running time across all running phases (persistent)
+        actual_total_running_seconds:
+          type: integer
+          format: int64
+          description: Dynamic total running time including current phase if running
+        total_paused_seconds:
+          type: integer
+          description: Cumulative paused time across all pause periods (persistent)
+        actual_total_paused_seconds:
+          type: integer
+          description: Dynamic total paused time including current pause if paused
+        persistence_days:
+          type: integer
+          description: Number of days sandbox data persists after termination (from plan)
+        persistence_expires_at:
+          type: string
+          format: date-time
+          description: When sandbox data will be permanently deleted
+          nullable: true
+        persistence_days_remaining:
+          type: integer
+          description: Days remaining until data deletion
+          nullable: true
+        auto_pause:
+          type: boolean
+          description: If true, timeout causes auto-pause; if false, termination (IMMUTABLE)
+        network_proxy:
+          type: object
+          description: Network proxy config (when token generated)
+          nullable: true
+          properties:
+            proxy_url:
+              type: string
+              description: Full proxy URL (username:password@host:port)
+            proxy_configs:
+              type: object
+              properties:
+                host:
+                  type: string
+                port:
+                  type: integer
+                username:
+                  type: string
+                password:
+                  type: string
         ports:
           type: array
           items:
@@ -1170,6 +1428,58 @@ components:
               error:
                 type: string
           description: List of failed deletions with errors
+
+    BatchIdsRequest:
+      type: object
+      required:
+        - sandbox_ids
+      properties:
+        sandbox_ids:
+          type: array
+          items:
+            type: string
+          description: List of sandbox IDs
+
+    BatchTerminateRequest:
+      type: object
+      required:
+        - sandbox_ids
+      properties:
+        sandbox_ids:
+          type: array
+          items:
+            type: string
+          description: List of sandbox IDs to terminate
+        force:
+          type: boolean
+          default: false
+          description: Force termination even if sandboxes are running
+
+    BatchOperationResult:
+      type: object
+      properties:
+        sandbox_id:
+          type: string
+        status:
+          type: string
+          enum: [success, error]
+        error:
+          type: string
+          description: Error message when status is error
+
+    BatchOperationResponse:
+      type: object
+      properties:
+        total:
+          type: integer
+        successful:
+          type: integer
+        failed:
+          type: integer
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/BatchOperationResult'
 
     SuccessResponse:
       type: object

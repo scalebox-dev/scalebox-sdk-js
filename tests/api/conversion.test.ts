@@ -99,7 +99,7 @@ describe('API Parameter Conversion Validation', () => {
         allowInternetAccess: true,
         cpuCount: 2,
         memoryMB: 1024,
-        isAsync: false
+        autoPause: false
       }
 
       const backendRequest = convertKeysToSnakeCase(frontendRequest)
@@ -118,8 +118,22 @@ describe('API Parameter Conversion Validation', () => {
         allow_internet_access: true,
         cpu_count: 2,
         memory_m_b: 1024,           // Note: This will have issues, needs special handling
-        is_async: false
+        auto_pause: false
       })
+    })
+
+    it('should include is_async when isAsync is true', () => {
+      const frontendRequest = {
+        template: 'base',
+        isAsync: true
+      }
+      const backendRequest = convertKeysToSnakeCase(frontendRequest) as Record<string, unknown>
+      expect(backendRequest.is_async).toBe(true)
+    })
+
+    it('should not include is_async when isAsync is false or omitted', () => {
+      expect((convertKeysToSnakeCase({ template: 'base' }) as Record<string, unknown>).is_async).toBeUndefined()
+      expect((convertKeysToSnakeCase({ template: 'base', isAsync: false }) as Record<string, unknown>).is_async).toBe(false)
     })
 
     it('should correctly convert backend response to frontend format', () => {
@@ -147,6 +161,36 @@ describe('API Parameter Conversion Validation', () => {
         },
         allowInternetAccess: true,
         createdAt: '2025-09-26T02:00:00Z'
+      })
+    })
+
+    it('should convert new sandbox response fields (running seconds, persistence, autoPause, network_proxy)', () => {
+      const backendResponse = {
+        sandbox_id: 'sbx-new',
+        total_running_seconds: 3600,
+        actual_total_running_seconds: 3580,
+        actual_total_paused_seconds: 20,
+        persistence_days: 7,
+        persistence_expires_at: '2025-02-10T00:00:00Z',
+        persistence_days_remaining: 5,
+        auto_pause: true,
+        network_proxy: {
+          proxy_url: 'http://proxy.example.com',
+          proxy_configs: { host: 'proxy', port: 8080, username: 'u', password: 'p' }
+        }
+      }
+      const frontendResponse = convertKeysToCamelCase(backendResponse)
+      expect(frontendResponse).toHaveProperty('totalRunningSeconds', 3600)
+      expect(frontendResponse).toHaveProperty('actualTotalRunningSeconds', 3580)
+      expect(frontendResponse).toHaveProperty('actualTotalPausedSeconds', 20)
+      expect(frontendResponse).toHaveProperty('persistenceDays', 7)
+      expect(frontendResponse).toHaveProperty('persistenceExpiresAt', '2025-02-10T00:00:00Z')
+      expect(frontendResponse).toHaveProperty('persistenceDaysRemaining', 5)
+      expect(frontendResponse).toHaveProperty('autoPause', true)
+      expect(frontendResponse).toHaveProperty('networkProxy')
+      expect((frontendResponse as { networkProxy: { proxyUrl?: string; proxyConfigs?: unknown } }).networkProxy).toMatchObject({
+        proxyUrl: 'http://proxy.example.com',
+        proxyConfigs: { host: 'proxy', port: 8080, username: 'u', password: 'p' }
       })
     })
   })

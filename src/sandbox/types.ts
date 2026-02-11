@@ -51,7 +51,18 @@ export interface SandboxInfo {
   resumedAt?: Date
   pauseTimeoutAt?: Date
   totalPausedSeconds?: number
-  
+  actualTotalPausedSeconds?: number
+  totalRunningSeconds?: number
+  actualTotalRunningSeconds?: number
+
+  // Persistence (plan-based)
+  persistenceDays?: number
+  persistenceExpiresAt?: string | null
+  persistenceDaysRemaining?: number | null
+
+  // Auto-pause (IMMUTABLE, set at creation)
+  autoPause?: boolean
+
   // Kubernetes deployment information
   clusterId?: string
   namespaceId?: string
@@ -100,8 +111,12 @@ export interface SandboxInfo {
   templatePorts?: PortConfig[]
   customPorts?: PortConfig[]
   
-  // Network proxy configuration
+  // Network proxy configuration (backend returns proxy_url + proxy_configs)
   netProxyCountry?: 'united-states' | 'canada' | 'japan' | 'malaysia' | 'brazil' | 'france' | 'italy' | 'china' | 'hong-kong'
+  networkProxy?: {
+    proxyUrl?: string
+    proxyConfigs?: { host: string; port: number; username: string; password: string }
+  } | null
 }
 
 export interface SandboxMetrics {
