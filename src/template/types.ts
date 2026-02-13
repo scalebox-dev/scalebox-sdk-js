@@ -57,6 +57,11 @@ export interface TemplateInfo {
   owner?: { userId: string; username?: string; displayName?: string }
 }
 
+/**
+ * Start command (custom_command) for custom templates must be JSON exec form:
+ * {"Entrypoint": ["/path"], "Cmd": ["arg1", "arg2"]}. Plain text is rejected.
+ * ready_command is plain text (e.g. "curl -sf http://localhost:80/ || exit 1").
+ */
 export interface CreateTemplateRequest {
   name: string
   description?: string
@@ -76,7 +81,9 @@ export interface CreateTemplateRequest {
   baseTemplateId?: string
   ports?: string
   resetPorts?: boolean
+  /** Custom templates: JSON string {"Entrypoint": string[], "Cmd": string[]}. Scalebox-family: plain text. */
   customCommand?: string
+  /** Plain text readiness check (e.g. curl to a port). */
   readyCommand?: string
 }
 
@@ -102,6 +109,10 @@ export interface UpdateTemplateStatusRequest {
   harborImageUrl?: string
 }
 
+/**
+ * directImportTemplate: custom_command must be JSON {"Entrypoint": string[], "Cmd": string[]};
+ * ready_command is plain text.
+ */
 export interface DirectImportTemplateRequest {
   name: string
   description?: string
@@ -112,7 +123,9 @@ export interface DirectImportTemplateRequest {
   defaultMemoryMb?: number
   visibility?: TemplateVisibility
   ports?: string
+  /** JSON exec form: {"Entrypoint": string[], "Cmd": string[]}. */
   customCommand?: string
+  /** Plain text (e.g. "curl -sf http://localhost:80/ || exit 1"). */
   readyCommand?: string
 }
 

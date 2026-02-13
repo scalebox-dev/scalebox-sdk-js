@@ -84,14 +84,16 @@ async function main() {
   }
   console.log('   Valid. Size (GB):', validation.sizeGb?.toFixed(2) ?? 'unknown')
 
-  // Build customCommand from the image's entrypoint + cmd — mirrors the frontend
-  // pattern in custom-template-dialog.tsx that auto-fills the command field.
+  // Backend requires custom_command for custom templates in JSON exec form:
+  // {"Entrypoint": string[], "Cmd": string[]}. ready_command is plain text.
   const entrypoint = validation.entrypoint ?? []
   const cmd = validation.cmd ?? []
-  const parts = [...entrypoint, ...cmd].filter(Boolean)
-  const customCommand = parts.length > 0 ? parts.join(' ') : undefined
+  const customCommand =
+    entrypoint.length > 0 || cmd.length > 0
+      ? JSON.stringify({ Entrypoint: entrypoint, Cmd: cmd })
+      : undefined
   if (customCommand) {
-    console.log('   Detected command:', customCommand)
+    console.log('   Detected command (exec form):', customCommand)
   }
 
   // -- Step 2: Create template (branching on mode) -----------------------------

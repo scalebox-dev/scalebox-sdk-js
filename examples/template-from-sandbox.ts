@@ -95,21 +95,18 @@ async function main() {
     // resetPorts: when false (default), the new template inherits ports from the
     // source sandbox's template and merges them with the ports specified here.
     // Set to true to discard inherited ports and use only the ones above.
-    resetPorts: false,
+    resetPorts: false
 
-    // customCommand: the command executed when a sandbox starts from this template.
-    // Typically the application's entrypoint (e.g., "node server.js", "python app.py").
-    customCommand: 'node server.js',
-
-    // readyCommand: a health-check command the platform runs to determine when the
-    // sandbox is ready. Exit code 0 means ready. Runs in a retry loop until success
-    // or timeout.
-    readyCommand: 'curl -sf http://localhost:3000/health || exit 1'
+    // Omit customCommand and readyCommand so the template uses the base image's
+    // default entrypoint and readiness. If you pass them: derived template inherits
+    // template_source from base (scalebox_family), so customCommand must be plain text
+    // (not JSON). readyCommand is always plain text (e.g. "curl -sf http://localhost:80/ || exit 1").
   })
   console.log('   Template ID:', created.templateId)
 
   // -- Step 4: Poll until template is available --------------------------------
   console.log('4. Polling until template is available...')
+  await new Promise(r => setTimeout(r, 3000))
   let t = await client.getTemplate(created.templateId)
   while (t.status !== 'available' && t.status !== 'failed') {
     await new Promise(r => setTimeout(r, 5000))

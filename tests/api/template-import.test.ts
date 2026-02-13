@@ -30,8 +30,16 @@ describe('API Client - Template Import', () => {
 
   describe.skipIf(skipIfNoApiKey)('directImportTemplate and waitUntilImportComplete', () => {
     let templateId: string | null = null
+    let sandboxId: string | null = null
 
     afterEach(async () => {
+      if (sandboxId && client) {
+        try {
+          await client.terminateSandbox(sandboxId)
+        } catch {
+          // ignore
+        }
+      }
       if (templateId && client) {
         try {
           await client.deleteTemplate(templateId)
@@ -41,7 +49,7 @@ describe('API Client - Template Import', () => {
       }
     })
 
-    it('should run direct import and wait until complete', async () => {
+    it('should run direct import, wait until complete, then create sandbox from template', async () => {
       const name = `import-${Date.now()}`
       const result = await client!.directImportTemplate({
         name,
@@ -56,10 +64,82 @@ describe('API Client - Template Import', () => {
         intervalMs: 5000
       })
       expect(['completed', 'failed', 'cancelled']).toContain(final.status)
-      if (final.status === 'completed') {
-        const t = await client!.getTemplate(templateId!)
-        expect(t.status).toBe('available')
+      if (final.status !== 'completed') return
+
+      const t = await client!.getTemplate(templateId!)
+      expect(t.status).toBe('available')
+
+      const sandbox = await client!.createSandbox({
+        template: templateId!,
+        timeout: 120
+      })
+      sandboxId = sandbox.sandboxId
+      expect(sandbox.sandboxId).toBeDefined()
+      expect(sandbox.templateId).toBe(templateId)
+    })
+  })
+
+  describe.skipIf(skipIfNoApiKey)('register-only: createTemplate custom/external with JSON customCommand', () => {
+    let templateId: string | null = null
+    let sandboxId: string | null = null
+
+    afterEach(async () => {
+      if (sandboxId && client) {
+        try {
+          await client.terminateSandbox(sandboxId)
+        } catch {
+          // ignore
+        }
       }
+      if (templateId && client) {
+        try {
+          await client.deleteTemplate(templateId)
+        } catch {
+          // ignore
+        }
+      }
+    })
+
+    it('should create external-pull template, getTemplate, then create sandbox from template', async () => {
+      const validation = await client!.validateCustomImage({
+        imageUrl: 'docker.io/library/nginx:alpine'
+      })
+      expect(validation.valid).toBe(true)
+      const entrypoint = validation.entrypoint ?? []
+      const cmd = validation.cmd ?? []
+      const customCommand =
+        entrypoint.length > 0 || cmd.length > 0
+          ? JSON.stringify({ Entrypoint: entrypoint, Cmd: cmd })
+          : undefined
+
+      const name = `register-${Date.now()}`
+      const template = await client!.createTemplate({
+        name,
+        description: 'Test register-only',
+        templateSource: 'custom',
+        customImageSource: 'external',
+        externalImageUrl: 'docker.io/library/nginx:alpine',
+        defaultCpuCount: 2,
+        defaultMemoryMb: 2048,
+        visibility: 'private',
+        ...(customCommand ? { customCommand } : {}),
+        readyCommand: 'curl -sf http://localhost:80/ || exit 1'
+      })
+      templateId = template.templateId
+      expect(template.templateId).toBeDefined()
+      expect(template.name).toBe(name)
+
+      const t = await client!.getTemplate(templateId!)
+      expect(t.templateId).toBe(templateId)
+      expect(t.templateSource).toBe('custom')
+
+      const sandbox = await client!.createSandbox({
+        template: templateId!,
+        timeout: 120
+      })
+      sandboxId = sandbox.sandboxId
+      expect(sandbox.sandboxId).toBeDefined()
+      expect(sandbox.templateId).toBe(templateId)
     })
   })
 })
