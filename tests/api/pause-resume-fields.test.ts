@@ -766,6 +766,18 @@ describe.skipIf(skipPauseResumeTests)('API Client - Pause/Resume Fields Validati
       expect(sandboxInfo.autoPause).toBe(true)
     })
 
+    it('should return autoPause in getSandbox when sandbox was created with autoPause: true', async () => {
+      const created = await client.createSandbox({
+        template: 'base',
+        timeout: 300,
+        autoPause: true,
+        metadata: { test: 'autopause-get-roundtrip' }
+      })
+      testSandboxId = created.sandboxId
+      const got = await client.getSandbox(created.sandboxId)
+      expect(got.autoPause).toBe(true)
+    })
+
     it('should auto-pause after timeout then be resumable and connectable', async () => {
       const isEnvError = (err: unknown): boolean => {
         const msg = err instanceof Error ? err.message : String(err)

@@ -356,6 +356,29 @@ describe('Sandbox Lifecycle Management', () => {
     }, 120000)
   })
 
+  describe('autoPause (lifecycle)', () => {
+    it('should default autoPause to false when not specified', async () => {
+      const sandbox = await Sandbox.create('code-interpreter', {
+        timeoutMs: 300000,
+        metadata: { purpose: 'autopause-default-lifecycle' }
+      })
+      createdSandboxes.push(sandbox.sandboxId)
+      const info = await sandbox.getInfo()
+      expect(info.autoPause).toBe(false)
+    }, 60000)
+
+    it('should reflect autoPause in getInfo when created with autoPause: true', async () => {
+      const sandbox = await Sandbox.create('code-interpreter', {
+        timeoutMs: 300000,
+        autoPause: true,
+        metadata: { purpose: 'autopause-enabled-lifecycle' }
+      })
+      createdSandboxes.push(sandbox.sandboxId)
+      const info = await sandbox.getInfo()
+      expect(info.autoPause).toBe(true)
+    }, 60000)
+  })
+
   describe('Error Handling Validation', () => {
     it('should correctly handle non-existent sandbox', async () => {
       console.log('🧪 Testing non-existent sandbox connection...')
