@@ -109,9 +109,6 @@ jobs:
       issues: write
       pull-requests: write
       id-token: write  # Required for npm Trusted Publishing (OIDC)
-    env:
-      NPM_TOKEN: ''
-      NODE_AUTH_TOKEN: ''
 
     steps:
     - name: Checkout code
