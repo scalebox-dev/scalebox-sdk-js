@@ -134,7 +134,20 @@ jobs:
     
     - name: Build package
       run: pnpm run build
-    
+
+    - name: Debug OIDC context
+      run: |
+        echo "=== @actions/core version ==="
+        node -e "const p = require(require.resolve('@actions/core/package.json', {paths:[require.resolve('@semantic-release/npm')]})); console.log(p.version)"
+        echo "=== env-ci detection ==="
+        node -e "const e = require(require.resolve('env-ci', {paths:[require.resolve('@semantic-release/npm')]})); console.log(JSON.stringify(e()))"
+        echo "=== registry resolution ==="
+        cat .npmrc
+        echo "---"
+        cat "$NPM_CONFIG_USERCONFIG"
+        echo "=== OIDC token test ==="
+        node -e "const c = require(require.resolve('@actions/core', {paths:[require.resolve('@semantic-release/npm')]})); c.getIDToken('npm:registry.npmjs.org').then(t => console.log('OIDC token obtained, length:', t.length)).catch(e => console.log('OIDC getIDToken failed:', e.message))"
+
     - name: Run semantic-release
       run: pnpm exec semantic-release
       env:
