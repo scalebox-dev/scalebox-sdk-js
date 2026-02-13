@@ -35,16 +35,16 @@ describe('API Client - Template Import', () => {
     afterEach(async () => {
       if (sandboxId && client) {
         try {
-          await client.terminateSandbox(sandboxId)
-        } catch {
-          // ignore
+          await client.deleteSandbox(sandboxId)
+        } catch (err) {
+          console.error('afterEach: deleteSandbox failed', { sandboxId }, err)
         }
       }
       if (templateId && client) {
         try {
           await client.deleteTemplate(templateId)
-        } catch {
-          // ignore
+        } catch (err) {
+          console.error('afterEach: deleteTemplate failed', { templateId }, err)
         }
       }
     })
@@ -86,16 +86,16 @@ describe('API Client - Template Import', () => {
     afterEach(async () => {
       if (sandboxId && client) {
         try {
-          await client.terminateSandbox(sandboxId)
-        } catch {
-          // ignore
+          await client.deleteSandbox(sandboxId)
+        } catch (err) {
+          console.error('afterEach: deleteSandbox failed', { sandboxId }, err)
         }
       }
       if (templateId && client) {
         try {
           await client.deleteTemplate(templateId)
-        } catch {
-          // ignore
+        } catch (err) {
+          console.error('afterEach: deleteTemplate failed', { templateId }, err)
         }
       }
     })
