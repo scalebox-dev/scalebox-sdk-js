@@ -138,15 +138,24 @@ jobs:
     - name: Debug OIDC context
       run: |
         echo "=== @actions/core version ==="
-        node -e "const p = require(require.resolve('@actions/core/package.json', {paths:[require.resolve('@semantic-release/npm')]})); console.log(p.version)"
+        node -e "const p = require(require.resolve('@actions/core/package.json', {paths:[require.resolve('@semantic-release/npm')]})); console.log(p.version)" || true
         echo "=== env-ci detection ==="
-        node -e "const e = require(require.resolve('env-ci', {paths:[require.resolve('@semantic-release/npm')]})); console.log(JSON.stringify(e()))"
+        node --input-type=module -e "import envCi from 'env-ci'; console.log(JSON.stringify(envCi()))" || true
         echo "=== registry resolution ==="
-        cat .npmrc
+        cat .npmrc || true
         echo "---"
-        cat "$NPM_CONFIG_USERCONFIG"
+        cat "$NPM_CONFIG_USERCONFIG" || true
         echo "=== OIDC token test ==="
-        node -e "const c = require(require.resolve('@actions/core', {paths:[require.resolve('@semantic-release/npm')]})); c.getIDToken('npm:registry.npmjs.org').then(t => console.log('OIDC token obtained, length:', t.length)).catch(e => console.log('OIDC getIDToken failed:', e.message))"
+        node --input-type=module -e "import {getIDToken} from '@actions/core'; try { const t = await getIDToken('npm:registry.npmjs.org'); console.log('OIDC token obtained, length:', t.length); } catch(e) { console.log('OIDC getIDToken failed:', e.message); }" || true
+        echo "=== getRegistry test ==="
+        node --input-type=module -e "
+          import getRegistry from '@semantic-release/npm/lib/get-registry.js';
+          const pkg = {name: '@scalebox/sdk', publishConfig: {access: 'public'}};
+          const ctx = {cwd: process.cwd(), env: process.env};
+          console.log('registry:', JSON.stringify(getRegistry(pkg, ctx)));
+          console.log('OFFICIAL:', JSON.stringify('https://registry.npmjs.org/'));
+          console.log('match:', getRegistry(pkg, ctx) === 'https://registry.npmjs.org/');
+        " || true
 
     - name: Run semantic-release
       run: pnpm exec semantic-release
