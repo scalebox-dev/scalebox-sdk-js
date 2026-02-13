@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { ApiClient } from '../../src'
+import { ApiClient, Sandbox } from '../../src'
 import { ConnectionConfig } from '../../src/connectionConfig'
 import { isIntegrationTest } from '../setup'
 
@@ -51,9 +51,12 @@ describe('API Client - Template Import', () => {
 
     it('should run direct import, wait until complete, then create sandbox from template', async () => {
       const name = `import-${Date.now()}`
+      const portsJson = JSON.stringify([{ port: 80, name: 'http', protocol: 'TCP' }])
       const result = await client!.directImportTemplate({
         name,
-        externalImageUrl: 'docker.io/library/nginx:alpine'
+        externalImageUrl: 'docker.io/library/nginx:alpine',
+        ports: portsJson,
+        readyCommand: 'curl -sf http://localhost:80/ || exit 1'
       })
       expect(result.templateId).toBeDefined()
       expect(result.name).toBe(name)
@@ -69,13 +72,38 @@ describe('API Client - Template Import', () => {
       const t = await client!.getTemplate(templateId!)
       expect(t.status).toBe('available')
 
-      const sandbox = await client!.createSandbox({
+      const sandboxInfo = await client!.createSandbox({
         template: templateId!,
         timeout: 120
       })
-      sandboxId = sandbox.sandboxId
-      expect(sandbox.sandboxId).toBeDefined()
-      expect(sandbox.templateId).toBe(templateId)
+      sandboxId = sandboxInfo.sandboxId
+      expect(sandboxInfo.sandboxId).toBeDefined()
+      expect(sandboxInfo.templateId).toBe(templateId)
+
+      // Verify exposed host: use port(s) from sandbox response, request root path, print status code
+      const sandbox = await Sandbox.connect(sandboxId!)
+      const allPorts = sandboxInfo.ports ?? sandboxInfo.templatePorts ?? sandboxInfo.customPorts ?? []
+      const firstPort = allPorts.length > 0 ? (allPorts[0] as { port?: number }).port : undefined
+      if (firstPort == null) {
+        console.log('No exposed port on sandbox, skip host check')
+        return
+      }
+      const host = sandbox.getHost(firstPort)
+      const url = `https://${host}/`
+      let code: number | null = null
+      let lastError: string | null = null
+      for (let i = 0; i < 15; i++) {
+        try {
+          const res = await fetch(url, { method: 'GET', signal: AbortSignal.timeout(8000) })
+          code = res.status
+          break
+        } catch (err) {
+          lastError = err instanceof Error ? err.message : String(err)
+        }
+        await new Promise(r => setTimeout(r, 2000))
+      }
+      expect(code, `URL ${url} should be reachable. Last: ${lastError ?? 'no response'}`).not.toBeNull()
+      console.log(code!)
     })
   })
 
