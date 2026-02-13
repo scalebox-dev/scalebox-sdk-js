@@ -137,24 +137,25 @@ jobs:
 
     - name: Debug OIDC context
       run: |
-        cat "$NPM_CONFIG_USERCONFIG" || true
-        echo "---"
-        pnpm exec node --input-type=module -e "
-          import envCi from 'env-ci';
-          import {getIDToken} from '@actions/core';
-          import getRegistry from '@semantic-release/npm/lib/get-registry.js';
-          const ci = envCi();
-          console.log('env-ci:', JSON.stringify(ci));
-          const pkg = {name: '@scalebox/sdk', publishConfig: {access: 'public'}};
-          const ctx = {cwd: process.cwd(), env: process.env};
-          const reg = getRegistry(pkg, ctx);
-          console.log('registry:', JSON.stringify(reg));
-          console.log('match official:', reg === 'https://registry.npmjs.org/');
-          try {
-            const t = await getIDToken('npm:registry.npmjs.org');
-            console.log('OIDC token length:', t.length);
-          } catch(e) { console.log('OIDC getIDToken failed:', e.message); }
-        " || true
+        SR_NPM_DIR=$(ls -d node_modules/.pnpm/@semantic-release+npm@*/node_modules/@semantic-release/npm)
+        echo "sr-npm dir: $SR_NPM_DIR"
+        cat > "$SR_NPM_DIR/debug-oidc.mjs" << 'SCRIPT'
+        import envCi from "env-ci";
+        import { getIDToken } from "@actions/core";
+        import getRegistry from "./lib/get-registry.js";
+        const ci = envCi();
+        console.log("env-ci:", JSON.stringify({name: ci.name, service: ci.service}));
+        const pkg = {name: "@scalebox/sdk", publishConfig: {access: "public"}};
+        const ctx = {cwd: process.env.GITHUB_WORKSPACE, env: process.env};
+        const reg = getRegistry(pkg, ctx);
+        console.log("registry:", JSON.stringify(reg));
+        console.log("match official:", reg === "https://registry.npmjs.org/");
+        try {
+          const t = await getIDToken("npm:registry.npmjs.org");
+          console.log("OIDC token length:", t.length);
+        } catch(e) { console.log("OIDC getIDToken failed:", e.message); }
+        SCRIPT
+        node "$SR_NPM_DIR/debug-oidc.mjs" || true
 
     - name: Run semantic-release
       run: pnpm exec semantic-release
