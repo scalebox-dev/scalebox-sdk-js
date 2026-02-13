@@ -1,3 +1,21 @@
+# [5.1.0](https://github.com/scalebox-dev/scalebox-sdk-js/compare/v5.0.0...v5.1.0) (2026-02-13)
+
+
+### Bug Fixes
+
+* **ci:** Force OIDC by clearing NPM_TOKEN/NODE_AUTH_TOKEN in release job ([0ab3882](https://github.com/scalebox-dev/scalebox-sdk-js/commit/0ab388222e5e9025a37d88480e2567c640c327d8))
+* **ci:** force semantic-release to use project's @semantic-release/npm v13 ([de03a6f](https://github.com/scalebox-dev/scalebox-sdk-js/commit/de03a6fed6a34b62ffec546ec9446367e1ffd529))
+* **ci:** pin @actions/core to 2.0.1 to restore OIDC token exchange ([089e295](https://github.com/scalebox-dev/scalebox-sdk-js/commit/089e2955389f8bdbb2823a6bc3a51e36b872b118))
+* **ci:** pin @semantic-release/npm to 13.1.3 to restore OIDC publishing ([da4917d](https://github.com/scalebox-dev/scalebox-sdk-js/commit/da4917d24edfb99fd4c7558aaece42fe33f57d58))
+* **deps:** Resolve audit via upgrade + minimal overrides ([8fa0907](https://github.com/scalebox-dev/scalebox-sdk-js/commit/8fa090758e698e86a44f09225b271c10d41240ec))
+* **tests:** Use deleteSandbox and log cleanup errors in template-import ([36c95a6](https://github.com/scalebox-dev/scalebox-sdk-js/commit/36c95a622a17093380a5e8719182c2942a48d2b2))
+
+
+### Features
+
+* Add Template API ([dbc418c](https://github.com/scalebox-dev/scalebox-sdk-js/commit/dbc418c49c171b37669712072d3c4497714a92ad))
+* **template:** Align customCommand with backend JSON exec form, extend import tests ([f553c97](https://github.com/scalebox-dev/scalebox-sdk-js/commit/f553c97f2e264baee84fa5b0ec1c3a201f51e5e7))
+
 # [5.0.0](https://github.com/scalebox-dev/scalebox-sdk-js/compare/v4.0.0...v5.0.0) (2026-01-20)
 
 
