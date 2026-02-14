@@ -1589,27 +1589,24 @@ describe('Filesystem Handlers', () => {
       console.log('📊 File size:', downloadedContent.length, 'bytes')
     }, timeout)
 
-    test('should generate download URL without signature (backward compatibility)', async () => {
+    test('should generate download URL (signed when token present)', async () => {
       const testFilePath = '/tmp/test-download-url-no-sig.txt'
-      const testContent = 'Test content for non-signed URL'
+      const testContent = 'Test content for download URL'
       
       await waitForSandboxHealth(sandbox)
       
-      // 1. Create a file in sandbox
       await sandbox.files.write(testFilePath, testContent)
-      
-      // 2. Generate download URL without signature
       const downloadUrl = await sandbox.downloadUrl(testFilePath)
       
-      // 3. Verify URL format (should not contain signature parameters)
       expect(downloadUrl).toContain(sandbox.sandboxDomain)
       expect(downloadUrl).toContain('/download/')
       expect(downloadUrl).toContain('tmp/test-download-url-no-sig.txt')
-      expect(downloadUrl).not.toContain('signature=')
-      expect(downloadUrl).not.toContain('signature_expiration=')
-      expect(downloadUrl).not.toContain('username=')
+      if (sandbox.envdAccessToken) {
+        expect(downloadUrl).toContain('signature=')
+        expect(downloadUrl).toContain('username=')
+      }
       
-      console.log('✅ Non-signed download URL test passed')
+      console.log('✅ Download URL test passed')
       console.log('📥 Download URL:', downloadUrl)
     }, timeout)
 

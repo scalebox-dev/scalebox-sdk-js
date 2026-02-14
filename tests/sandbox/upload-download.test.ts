@@ -104,8 +104,11 @@ describe('File Upload and Download', () => {
     
     expect(uploadUrl).toContain(sandbox.sandboxDomain)
     expect(uploadUrl).toContain('/upload')
-    expect(uploadUrl).not.toContain('path=')
-    expect(uploadUrl).not.toContain('username=')
+    // When token present, SDK adds path/username/signature per sandboxagent auth
+    if (sandbox.envdAccessToken) {
+      expect(uploadUrl).toContain('path=')
+      expect(uploadUrl).toContain('username=')
+    }
   }, timeout)
 
   test('should generate download URL', async () => {
@@ -115,9 +118,11 @@ describe('File Upload and Download', () => {
     
     expect(downloadUrl).toContain(sandbox.sandboxDomain)
     expect(downloadUrl).toContain('/download/')
-    expect(downloadUrl).toContain('tmp/download-via-url.txt') // Path should be in URL path, not query
-    expect(downloadUrl).not.toContain('path=')
-    expect(downloadUrl).not.toContain('username=')
+    expect(downloadUrl).toContain('tmp/download-via-url.txt')
+    // When token present, SDK adds signature/username per sandboxagent auth (path is in URL path)
+    if (sandbox.envdAccessToken) {
+      expect(downloadUrl).toContain('username=')
+    }
   }, timeout)
 
   test('should generate URLs with custom user', async () => {

@@ -152,15 +152,18 @@ describe('Signature URL Generation', () => {
       }
     })
 
-    it('should generate download URL without signature (backward compatibility)', async () => {
+    it('should generate download URL (signed when token present, backend validates)', async () => {
       const path = '/tmp/test-file.txt'
       const url = await sandbox.downloadUrl(path)
 
       expect(url).toContain(sandbox.sandboxDomain)
       expect(url).toContain('/download/')
       expect(url).toContain('tmp/test-file.txt')
-      expect(url).not.toContain('signature=')
-      expect(url).not.toContain('signature_expiration=')
+      // When envdAccessToken is present, SDK adds signature/username per sandboxagent auth; URL may contain them
+      if (sandbox.envdAccessToken) {
+        expect(url).toContain('signature=')
+        expect(url).toContain('username=')
+      }
     })
 
     it('should generate signed download URL with expiration', async () => {
@@ -327,14 +330,18 @@ describe('Signature URL Generation', () => {
       }
     })
 
-    it('should generate upload URL without signature (backward compatibility)', async () => {
+    it('should generate upload URL (signed when token present, backend validates)', async () => {
       const path = '/tmp/upload-file.txt'
       const url = await sandbox.uploadUrl(path)
 
       expect(url).toContain(sandbox.sandboxDomain)
       expect(url).toContain('/upload')
-      expect(url).not.toContain('signature=')
-      expect(url).not.toContain('signature_expiration=')
+      // When envdAccessToken is present, SDK adds signature/username/path per sandboxagent auth
+      if (sandbox.envdAccessToken) {
+        expect(url).toContain('signature=')
+        expect(url).toContain('username=')
+        expect(url).toContain('path=')
+      }
     })
 
     it('should generate signed upload URL with expiration', async () => {
