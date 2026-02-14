@@ -1,9 +1,16 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import * as tls from 'node:tls'
 import { ApiClient, Sandbox } from '../../src'
 import { ConnectionConfig } from '../../src/connectionConfig'
 import { isIntegrationTest } from '../setup'
 
 const skipIfNoApiKey = !process.env.SCALEBOX_API_KEY && !isIntegrationTest
+
+/** L4 TLS port (same as redis-cli -p 8443 --tls --sni <host>; SNI required for routing). */
+const L4_REDIS_PORT = 8443
+/** Redis RESP: PING *1\r\n$4\r\nPING\r\n -> +PONG\r\n */
+const REDIS_PING = '*1\r\n$4\r\nPING\r\n'
+const REDIS_PONG = '+PONG'
 
 describe('API Client - Template Import', () => {
   let client: ApiClient
@@ -169,5 +176,109 @@ describe('API Client - Template Import', () => {
       expect(sandbox.sandboxId).toBeDefined()
       expect(sandbox.templateId).toBe(templateId)
     })
+  })
+
+  describe.skipIf(skipIfNoApiKey)('L4 proxy: Redis direct import and TCP reachability', () => {
+    let templateId: string | null = null
+    let sandboxId: string | null = null
+
+    afterEach(async () => {
+      if (sandboxId && client) {
+        try {
+          await client.deleteSandbox(sandboxId)
+        } catch (err) {
+          console.error('afterEach: deleteSandbox failed', { sandboxId }, err)
+        }
+      }
+      if (templateId && client) {
+        try {
+          await client.deleteTemplate(templateId)
+        } catch (err) {
+          console.error('afterEach: deleteTemplate failed', { templateId }, err)
+        }
+      }
+    })
+
+    it(
+      'should import Redis image, create sandbox, and reach Redis via L4 with correct SNI',
+      async () => {
+      const name = `import-redis-${Date.now()}`
+      const portsJson = JSON.stringify([{ port: 6379, name: 'redis', protocol: 'TCP' }])
+      const result = await client!.directImportTemplate({
+        name,
+        externalImageUrl: 'docker.io/library/redis:alpine',
+        ports: portsJson,
+        readyCommand: 'redis-cli ping | grep -q PONG'
+      })
+      expect(result.templateId).toBeDefined()
+      templateId = result.templateId
+
+      const final = await client!.waitUntilImportComplete(templateId, {
+        timeoutMs: 600_000,
+        intervalMs: 5000
+      })
+      expect(['completed', 'failed', 'cancelled']).toContain(final.status)
+      if (final.status !== 'completed') return
+
+      const t = await client!.getTemplate(templateId!)
+      expect(t.status).toBe('available')
+
+      const sandboxInfo = await client!.createSandbox({
+        template: templateId!,
+        timeout: 120
+      })
+      sandboxId = sandboxInfo.sandboxId
+      expect(sandboxInfo.sandboxId).toBeDefined()
+
+      const sandbox = await Sandbox.connect(sandboxId!)
+      const host = sandbox.getHost(6379)
+      // Native TLS + RESP (no redis-cli). Same as redis-cli -h <host> -p 8443 --tls --sni <host>.
+      const socketTimeoutMs = 8000
+      let pong = false
+      let lastErr: string | null = null
+      for (let i = 0; i < 10; i++) {
+        const ok = await new Promise<boolean>((resolve) => {
+          const sock = tls.connect(
+            { port: L4_REDIS_PORT, host, servername: host },
+            () => {
+              sock.write(REDIS_PING, (err) => {
+                if (err) {
+                  lastErr = err.message
+                  sock.destroy()
+                  resolve(false)
+                  return
+                }
+                sock.once('data', (data) => {
+                  sock.destroy()
+                  resolve(data.toString().includes(REDIS_PONG))
+                })
+                sock.setTimeout(socketTimeoutMs, () => {
+                  lastErr = 'timeout'
+                  sock.destroy()
+                  resolve(false)
+                })
+              })
+            }
+          )
+          sock.on('error', (e) => {
+            lastErr = e.message
+            sock.destroy()
+            resolve(false)
+          })
+        })
+        if (ok) {
+          pong = true
+          console.log(`L4 Redis: ${host}:${L4_REDIS_PORT} (SNI=${host}) PING->PONG`)
+          break
+        }
+        await new Promise((r) => setTimeout(r, 2000))
+      }
+      expect(
+        pong,
+        `Redis at ${host}:${L4_REDIS_PORT} (SNI=${host}) should respond PONG. Last: ${lastErr ?? 'no PONG'}`
+      ).toBe(true)
+    },
+    600_000
+    )
   })
 })
