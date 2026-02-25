@@ -1,3 +1,11 @@
+## [5.1.1](https://github.com/scalebox-dev/scalebox-sdk-js/compare/v5.1.0...v5.1.1) (2026-02-25)
+
+
+### Bug Fixes
+
+* **ci:** resolve pnpm audit vulnerabilities via overrides ([3714eef](https://github.com/scalebox-dev/scalebox-sdk-js/commit/3714eefc1f94f4efe1fa640d3962a0c4a8626f5b))
+* **sandbox:** make waitForHealth timeout-driven ([8cf5032](https://github.com/scalebox-dev/scalebox-sdk-js/commit/8cf5032892d663d235dd570bb8f333b5679af826))
+
 # [5.1.0](https://github.com/scalebox-dev/scalebox-sdk-js/compare/v5.0.0...v5.1.0) (2026-02-13)
 
 
