@@ -232,7 +232,6 @@ export class Sandbox {
     // This ensures the sandbox is fully ready before returning to the client
     try {
       await instance.waitForHealth({
-        maxRetries: 100,
         retryInterval: 200,
         timeout: 10000
       })
@@ -299,7 +298,6 @@ export class Sandbox {
     // Especially important when resuming from paused state
     try {
       await instance.waitForHealth({
-        maxRetries: 100,
         retryInterval: 200,
         timeout: 10000
       })
@@ -344,7 +342,6 @@ export class Sandbox {
     // Especially important when resuming from paused state
     try {
       await this.waitForHealth({
-        maxRetries: 100,
         retryInterval: 200,
         timeout: 10000
       })
@@ -625,24 +622,23 @@ export class Sandbox {
    * console.log('Sandbox is ready!')
    * ```
    */
-  async waitForHealth(opts?: { maxRetries?: number; retryInterval?: number; timeout?: number }) {
-    const maxRetries = opts?.maxRetries || 50
+  async waitForHealth(opts?: { retryInterval?: number; timeout?: number }) {
     const retryInterval = opts?.retryInterval || 100
     const timeout = opts?.timeout || 5000
-    
-    const startTime = Date.now()
-    
+    const deadline = Date.now() + timeout
+
     // Build the health check URL using sandboxDomain
     const baseUrl = `https://${this.sandboxDomain}`
     const healthUrl = `${baseUrl}/health`
-    
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      // Check if we've exceeded total timeout
-      const elapsed = Date.now() - startTime
-      if (elapsed > timeout) {
+
+    while (true) {
+      const now = Date.now()
+      const remainingBeforeAttempt = deadline - now
+      if (remainingBeforeAttempt <= 0) {
+        const elapsed = timeout + Math.abs(remainingBeforeAttempt)
         throw new Error(`Health check timeout after ${elapsed}ms`)
       }
-      
+
       try {
         // Build request headers
         const requestHeaders: Record<string, string> = {}
@@ -663,14 +659,18 @@ export class Sandbox {
           return
         }
       } catch (error) {
-        // If it's not ready, wait and retry
-        if (attempt < maxRetries) {
-          await new Promise(resolve => setTimeout(resolve, retryInterval))
-        }
+        // Network/transient errors are expected while ingress is not ready.
       }
+
+      const remainingAfterAttempt = deadline - Date.now()
+      if (remainingAfterAttempt <= 0) {
+        throw new Error(`Health check timeout after ${timeout}ms`)
+      }
+
+      await new Promise(resolve =>
+        setTimeout(resolve, Math.min(retryInterval, remainingAfterAttempt))
+      )
     }
-    
-    throw new Error(`Health check failed after ${maxRetries} attempts`)
   }
 
   /**

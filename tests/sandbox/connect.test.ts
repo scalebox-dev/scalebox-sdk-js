@@ -515,7 +515,6 @@ describe('Sandbox Connect - Comprehensive Test Suite', () => {
       // Wait for health check
       try {
         await connected.waitForHealth({
-          maxRetries: 30,
           retryInterval: 200,
           timeout: 6000
         })
@@ -786,4 +785,3 @@ describe('Sandbox Connect - Comprehensive Test Suite', () => {
     }, DEFAULT_TIMEOUT)
   })
 })
-
