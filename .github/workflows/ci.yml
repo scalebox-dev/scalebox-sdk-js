@@ -13,7 +13,8 @@ jobs:
     
     strategy:
       matrix:
-        node-version: [20, 22, 24]
+        # Active LTS versions only — https://nodejs.org/en/about/previous-releases
+        node-version: [22, 24]
     
     steps:
     - uses: actions/checkout@v4
