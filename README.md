@@ -34,7 +34,7 @@ A JavaScript SDK for executing multi-language code in controlled sandboxes, supp
 - Real-world testing: Comprehensive coverage with synchronous/asynchronous and multi-language examples
 
 ## Requirements
-- Node.js 20+
+- Node.js 22+
 - Access to Scalebox environment or local service
 
 ## Installation
