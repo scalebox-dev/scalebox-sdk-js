@@ -343,6 +343,7 @@ const sandbox3 = await Sandbox.create('code-interpreter', {
 - **Hard constraint mode** (`force: true`): Sandbox creation will fail with a 409 Conflict error if the requested region is unavailable, even if other regions have capacity. **WARNING**: Use with caution.
 - **Use cases for `force: true`**: Strict compliance requirements, regulatory constraints, or data residency requirements
 - **Recommended**: Use `force: false` (default) for most use cases to ensure high availability
+- **Validation matrix**: Run `tests/sandbox/locality-matrix.test.ts` to verify the 16-case locality contract. See `docs/LOCALITY_MATRIX_TEST.md`.
 
 ### Pause and Resume Operations
 

@@ -71,6 +71,21 @@ node scripts/run-tests-sequential.js
 node scripts/run-tests-sequential.js --no-integration
 ```
 
+### 3. Run Locality Contract Matrix (16 Cases)
+
+Use this when you want to validate locality create-sandbox behavior directly.
+
+```bash
+SCALEBOX_API_KEY=your-api-key \
+SCALEBOX_API_URL=https://api.scalebox.dev \
+VITEST_SERIAL=1 \
+pnpm vitest run tests/sandbox/locality-matrix.test.ts
+```
+
+- Target file: `tests/sandbox/locality-matrix.test.ts`
+- Success criteria: all 16 cases pass
+- Detailed notes: see `docs/LOCALITY_MATRIX_TEST.md`
+
 ## Test Execution Order
 
 Tests are executed in the following order to ensure optimal resource usage:
