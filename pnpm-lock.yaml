@@ -7,11 +7,10 @@ settings:
 overrides:
   glob: '>=10.5.0'
   js-yaml: '>=4.1.1'
-  tar: '>=7.5.11'
   '@mapbox/node-pre-gyp>tar': 7.5.11
-  flatted: '>=3.4.0'
-  undici: '>=6.24.0'
-  rollup: '>=4.59.0'
+  '@vitest/ui>flatted': 3.4.1
+  '@actions/http-client>undici': 6.24.0
+  rollup: 4.59.0
   npm-run-all>minimatch: 3.1.4
   '@redocly/openapi-core>minimatch': 5.1.8
   test-exclude>minimatch: 9.0.7
@@ -2927,9 +2926,9 @@ packages:
   undici-types@6.21.0:
     resolution: {integrity: sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ==}
 
-  undici@7.24.4:
-    resolution: {integrity: sha512-BM/JzwwaRXxrLdElV2Uo6cTLEjhSb3WXboncJamZ15NgUURmvlXvxa6xkwIOILIjPNo9i8ku136ZvWV0Uly8+w==}
-    engines: {node: '>=20.18.1'}
+  undici@6.24.0:
+    resolution: {integrity: sha512-lVLNosgqo5EkGqh5XUDhGfsMSoO8K0BAN0TyJLvwNRSl4xWGZlCVYsAIpa/OpA3TvmnM01GWcoKmc3ZWo5wKKA==}
+    engines: {node: '>=18.17'}
 
   unicode-emoji-modifier-base@1.0.0:
     resolution: {integrity: sha512-yLSH4py7oFH3oG/9K+XWrz1pSi3dfUrWEnInbxMfArOfc1+33BlGPQtLsOYwvdMy11AwUBetYuaRxSPqgkq+8g==}
@@ -3142,7 +3141,7 @@ snapshots:
   '@actions/http-client@3.0.2':
     dependencies:
       tunnel: 0.0.6
-      undici: 7.24.4
+      undici: 6.24.0
 
   '@actions/io@2.0.0': {}
 
@@ -5944,7 +5943,7 @@ snapshots:
 
   undici-types@6.21.0: {}
 
-  undici@7.24.4: {}
+  undici@6.24.0: {}
 
   unicode-emoji-modifier-base@1.0.0: {}
 
