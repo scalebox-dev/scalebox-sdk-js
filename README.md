@@ -183,11 +183,10 @@ console.log('Suggestions:', result.insights.suggestions)
 **Object storage mount (S3-compatible):**
 
 ```typescript
-// Create session with object storage mounted
+// Single mount
 const result = await Session.run({
   code: `
     import os
-    # Object storage is mounted at the specified mount point
     files = os.listdir('/mnt/oss')
     print(f'Files in OSS: {files}')
   `,
@@ -197,8 +196,20 @@ const result = await Session.run({
     accessKey: 'YOUR_ACCESS_KEY',
     secretKey: 'YOUR_SECRET_KEY',
     region: 'ap-east-1',
-    endpoint: 'https://s3.ap-east-1.amazonaws.com'
   }
+})
+
+// Multi-path mount
+const result2 = await Session.run({
+  code: `
+    import os
+    print('Data:', os.listdir('/mnt/data'))
+    print('Models:', os.listdir('/mnt/models'))
+  `,
+  objectStorages: [
+    { uri: 's3://bucket/data/', mountPoint: '/mnt/data', accessKey: 'AK', secretKey: 'SK', region: 'ap-east-1' },
+    { uri: 's3://bucket/models/', mountPoint: '/mnt/models', accessKey: 'AK', secretKey: 'SK', region: 'ap-east-1' }
+  ]
 })
 ```
 
@@ -271,7 +282,7 @@ const sandbox = await Sandbox.create('code-interpreter', {
   envs: { NODE_ENV: 'production' }
 })
 
-// Create sandbox with object storage mount
+// Create sandbox with single object storage mount
 const sandboxWithOSS = await Sandbox.create('code-interpreter', {
   timeoutMs: 300000,
   objectStorage: {
@@ -280,10 +291,29 @@ const sandboxWithOSS = await Sandbox.create('code-interpreter', {
     accessKey: 'YOUR_ACCESS_KEY',
     secretKey: 'YOUR_SECRET_KEY',
     region: 'ap-east-1',
-    endpoint: 'https://s3.ap-east-1.amazonaws.com'
   }
 })
-// Object storage is now mounted at /mnt/oss
+
+// Multi-path mount: mount multiple buckets/prefixes simultaneously
+const sandboxMultiOSS = await Sandbox.create('code-interpreter', {
+  timeoutMs: 300000,
+  objectStorages: [
+    {
+      uri: 's3://my-bucket/data/',
+      mountPoint: '/mnt/data',
+      accessKey: 'YOUR_ACCESS_KEY',
+      secretKey: 'YOUR_SECRET_KEY',
+      region: 'ap-east-1',
+    },
+    {
+      uri: 's3://my-bucket/models/',
+      mountPoint: '/mnt/models',
+      accessKey: 'YOUR_ACCESS_KEY',
+      secretKey: 'YOUR_SECRET_KEY',
+      region: 'ap-east-1',
+    }
+  ]
+})
 
 // Connect to existing sandbox
 const connectedSandbox = await Sandbox.connect('sandbox-id')

@@ -124,11 +124,8 @@ export interface ExecutionRequest {
   timeout?: number
   
   /**
-   * Object storage mount configuration for S3-compatible storage.
-   * 
-   * When provided, the specified S3 bucket will be mounted to the sandbox
-   * at the specified mount point using FUSE.
-   * 
+   * Single object storage mount (backward compatible).
+   *
    * @example
    * ```ts
    * await Session.run({
@@ -139,13 +136,32 @@ export interface ExecutionRequest {
    *     accessKey: 'YOUR_ACCESS_KEY',
    *     secretKey: 'YOUR_SECRET_KEY',
    *     region: 'ap-east-1',
-   *     endpoint: 'https://s3.ap-east-1.amazonaws.com'
    *   }
    * })
    * ```
    */
   objectStorage?: import('../sandbox/types').ObjectStorageConfig
-  
+
+  /**
+   * Multiple object storage mounts (S3-compatible).
+   *
+   * Mount multiple buckets/prefixes simultaneously. Each mount requires
+   * `uri`, `mountPoint`, `accessKey`, `secretKey`, and at least one of
+   * `region` or `endpoint`.
+   *
+   * @example
+   * ```ts
+   * await Session.run({
+   *   code: 'import os; print(os.listdir("/mnt/data"))',
+   *   objectStorages: [
+   *     { uri: 's3://bucket/data/', mountPoint: '/mnt/data', accessKey: 'AK', secretKey: 'SK', region: 'ap-east-1' },
+   *     { uri: 's3://bucket/models/', mountPoint: '/mnt/models', accessKey: 'AK', secretKey: 'SK', region: 'ap-east-1' }
+   *   ]
+   * })
+   * ```
+   */
+  objectStorages?: import('../sandbox/types').ObjectStorageConfig[]
+
   // ===== Output and Progress =====
   /**
    * Files to download after execution

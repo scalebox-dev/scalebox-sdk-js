@@ -181,11 +181,10 @@ console.log('建议:', result.insights.suggestions)
 **对象存储挂载（S3 兼容）：**
 
 ```typescript
-// 创建带对象存储挂载的会话
+// 单路径挂载
 const result = await Session.run({
   code: `
     import os
-    # 对象存储已挂载到指定的挂载点
     files = os.listdir('/mnt/oss')
     print(f'OSS 中的文件: {files}')
   `,
@@ -195,8 +194,20 @@ const result = await Session.run({
     accessKey: 'YOUR_ACCESS_KEY',
     secretKey: 'YOUR_SECRET_KEY',
     region: 'ap-east-1',
-    endpoint: 'https://s3.ap-east-1.amazonaws.com'
   }
+})
+
+// 多路径挂载
+const result2 = await Session.run({
+  code: `
+    import os
+    print('Data:', os.listdir('/mnt/data'))
+    print('Models:', os.listdir('/mnt/models'))
+  `,
+  objectStorages: [
+    { uri: 's3://bucket/data/', mountPoint: '/mnt/data', accessKey: 'AK', secretKey: 'SK', region: 'ap-east-1' },
+    { uri: 's3://bucket/models/', mountPoint: '/mnt/models', accessKey: 'AK', secretKey: 'SK', region: 'ap-east-1' }
+  ]
 })
 ```
 
@@ -269,7 +280,7 @@ const sandbox = await Sandbox.create('code-interpreter', {
   envs: { NODE_ENV: 'production' }
 })
 
-// 创建带对象存储挂载的沙箱
+// 创建带单个对象存储挂载的沙箱
 const sandboxWithOSS = await Sandbox.create('code-interpreter', {
   timeoutMs: 300000,
   objectStorage: {
@@ -278,10 +289,29 @@ const sandboxWithOSS = await Sandbox.create('code-interpreter', {
     accessKey: 'YOUR_ACCESS_KEY',
     secretKey: 'YOUR_SECRET_KEY',
     region: 'ap-east-1',
-    endpoint: 'https://s3.ap-east-1.amazonaws.com'
   }
 })
-// 对象存储已挂载到 /mnt/oss
+
+// 多路径挂载：同时挂载多个桶/前缀
+const sandboxMultiOSS = await Sandbox.create('code-interpreter', {
+  timeoutMs: 300000,
+  objectStorages: [
+    {
+      uri: 's3://my-bucket/data/',
+      mountPoint: '/mnt/data',
+      accessKey: 'YOUR_ACCESS_KEY',
+      secretKey: 'YOUR_SECRET_KEY',
+      region: 'ap-east-1',
+    },
+    {
+      uri: 's3://my-bucket/models/',
+      mountPoint: '/mnt/models',
+      accessKey: 'YOUR_ACCESS_KEY',
+      secretKey: 'YOUR_SECRET_KEY',
+      region: 'ap-east-1',
+    }
+  ]
+})
 
 // 连接到现有沙箱
 const connectedSandbox = await Sandbox.connect('sandbox-id')

@@ -261,7 +261,8 @@ export class SessionExecutor {
       
       const sandbox = await Sandbox.create('code-interpreter', {
         timeoutMs: request.timeout || 600000,
-        objectStorage: request.objectStorage
+        objectStorage: request.objectStorage,
+        objectStorages: request.objectStorages,
       })
       
       timer.updateProgress(60, 'Initializing code interpreter')
