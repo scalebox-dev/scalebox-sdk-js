@@ -164,8 +164,27 @@ function parseObjectStorageFromResponse(data: any): {
   }
 }
 
+/**
+ * Merge objectStorage (single, backward compat) and objectStorages (array)
+ * into a single array for the backend request.
+ *
+ * If both are provided, single goes first, then array elements.
+ * Returns undefined when nothing to send.
+ */
+function mergeObjectStorageForRequest(
+  single?: ObjectStorageConfig,
+  multi?: ObjectStorageConfig[],
+): ObjectStorageConfig[] | undefined {
+  const all: ObjectStorageConfig[] = []
+  if (single) all.push(single)
+  if (multi) all.push(...multi)
+  return all.length > 0 ? all : undefined
+}
+
 /** @internal — exported for unit testing only */
 export { parseObjectStorageFromResponse as _parseObjectStorageFromResponse }
+/** @internal — exported for unit testing only */
+export { mergeObjectStorageForRequest as _mergeObjectStorageForRequest }
 
 /**
  * HTTP API 客户端
@@ -268,12 +287,7 @@ export class ApiClient {
       // Always send an array to the backend — the backend's new format requires it.
       // The backend's UnmarshalJSON still accepts a single object for legacy clients,
       // but the SDK should always send array to use the canonical new format.
-      objectStorage: (() => {
-        const all: ObjectStorageConfig[] = []
-        if (request.objectStorage) all.push(request.objectStorage)
-        if (request.objectStorages) all.push(...request.objectStorages)
-        return all.length > 0 ? all : undefined
-      })(),
+      objectStorage: mergeObjectStorageForRequest(request.objectStorage, request.objectStorages),
       objectStorageDirectMount: request.objectStorageDirectMount,
       s3fsExecutablePath: request.s3fsExecutablePath,
       customPorts: request.customPorts, // 将转换为 custom_ports

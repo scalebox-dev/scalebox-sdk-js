@@ -18,22 +18,22 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    /** @description Maximum number of results */
-                    limit?: number;
-                    /** @description Number of results to skip */
-                    offset?: number;
-                    /** @description Filter by owner user ID (root users only) */
-                    owner_user_id?: string;
                     /** @description Filter by project ID */
                     project_id?: string;
+                    /** @description Filter by status */
+                    status?: "created" | "starting" | "running" | "pausing" | "paused" | "resuming" | "terminating" | "terminated" | "failed";
+                    /** @description Filter by owner user ID (root users only) */
+                    owner_user_id?: string;
                     /** @description Search in sandbox names */
                     search?: string;
                     /** @description Sort by field */
                     sort_by?: string;
                     /** @description Sort order */
                     sort_order?: "asc" | "desc";
-                    /** @description Filter by status */
-                    status?: "created" | "starting" | "running" | "pausing" | "paused" | "resuming" | "terminating" | "terminated" | "failed";
+                    /** @description Maximum number of results */
+                    limit?: number;
+                    /** @description Number of results to skip */
+                    offset?: number;
                 };
                 header?: never;
                 path?: never;
@@ -242,12 +242,447 @@ export interface paths {
                     content: {
                         "application/json": {
                             data?: {
-                                note?: string;
                                 sandbox_id?: string;
                                 status?: string;
+                                note?: string;
                             };
                             message?: string;
                         };
+                    };
+                };
+                /** @description Sandbox not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/sandboxes/{sandbox_id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get sandbox status (lightweight)
+         * @description Returns only sandbox_id, status, substatus, reason, updated_at for polling. Use this instead of GET /v1/sandboxes/{sandbox_id} for status polling to reduce payload.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Sandbox ID */
+                    sandbox_id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Sandbox status */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data?: components["schemas"]["SandboxStatusResponse"];
+                        };
+                    };
+                };
+                /** @description Sandbox not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/sandboxes/{sandbox_id}/pause": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Pause a running sandbox
+         * @description Pause a running sandbox. Default (sync) waits until paused or failed. Pass is_async in body to return immediately.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Sandbox ID */
+                    sandbox_id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /**
+                         * @description When true, return immediately; when false, wait until paused/failed
+                         * @default false
+                         */
+                        is_async?: boolean;
+                    };
+                };
+            };
+            responses: {
+                /** @description Sandbox paused (sync) or pause initiated (async) */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            message?: string;
+                        };
+                    };
+                };
+                /** @description Sandbox not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/sandboxes/{sandbox_id}/resume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resume a paused sandbox
+         * @deprecated
+         * @description Resume a paused sandbox. Default (sync) waits until running or failed. Pass is_async in body to return immediately. Deprecated - prefer /connect endpoint.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Sandbox ID */
+                    sandbox_id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /**
+                         * @description When true, return immediately; when false, wait until running/failed
+                         * @default false
+                         */
+                        is_async?: boolean;
+                    };
+                };
+            };
+            responses: {
+                /** @description Sandbox resumed (sync) or resume initiated (async) */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            message?: string;
+                        };
+                    };
+                };
+                /** @description Sandbox not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/sandboxes/{sandbox_id}/timeout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Update sandbox timeout
+         * @description Update the timeout for a sandbox
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Sandbox ID */
+                    sandbox_id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SandboxTimeoutRequest"];
+                };
+            };
+            responses: {
+                /** @description Timeout updated successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data?: {
+                                timeout?: number;
+                                /** Format: date-time */
+                                timeout_at?: string;
+                                used_lifetime?: number;
+                                remaining_time?: number;
+                            };
+                            message?: string;
+                        };
+                    };
+                };
+                /** @description Bad request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/sandboxes/{sandbox_id}/ports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get sandbox ports
+         * @description Get all ports (template + custom) for a sandbox
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Sandbox ID */
+                    sandbox_id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Port list */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data?: {
+                                ports?: components["schemas"]["PortConfig"][];
+                                template_ports?: components["schemas"]["PortConfig"][];
+                                custom_ports?: components["schemas"]["PortConfig"][];
+                            };
+                        };
+                    };
+                };
+                /** @description Sandbox not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Add custom port to sandbox
+         * @description Add a custom port to a running sandbox
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Sandbox ID */
+                    sandbox_id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /**
+                         * Format: int32
+                         * @description Port number
+                         */
+                        port: number;
+                        /**
+                         * Format: int32
+                         * @description Service port (defaults to port)
+                         */
+                        service_port?: number;
+                        /**
+                         * @description Port protocol
+                         * @default TCP
+                         * @enum {string}
+                         */
+                        protocol?: "TCP" | "UDP";
+                        /** @description Port name */
+                        name: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Port added successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data?: components["schemas"]["SandboxResponse"];
+                            message?: string;
+                        };
+                    };
+                };
+                /** @description Bad request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Sandbox not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/sandboxes/{sandbox_id}/ports/{port}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove custom port from sandbox
+         * @description Remove a custom port from a running sandbox
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Sandbox ID */
+                    sandbox_id: string;
+                    /** @description Port number to remove */
+                    port: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Port removed successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            message?: string;
+                        };
+                    };
+                };
+                /** @description Bad request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
                     };
                 };
                 /** @description Sandbox not found */
@@ -303,29 +738,207 @@ export interface paths {
                     content: {
                         "application/json": {
                             data?: {
-                                base_template_id?: string;
-                                /** Format: date-time */
-                                created_at?: string;
-                                custom_command?: string;
+                                template_id?: string;
+                                name?: string;
+                                description?: string;
                                 default_cpu_count?: number;
                                 default_memory_mb?: number;
-                                description?: string;
+                                is_public?: boolean;
+                                status?: string;
                                 harbor_project?: string;
                                 harbor_repository?: string;
                                 harbor_tag?: string;
-                                is_public?: boolean;
-                                message?: string;
-                                name?: string;
+                                base_template_id?: string;
                                 /** @description JSON string of port configurations */
                                 ports?: string;
+                                custom_command?: string;
                                 ready_command?: string;
-                                status?: string;
-                                template_id?: string;
+                                /** Format: date-time */
+                                created_at?: string;
+                                message?: string;
                             };
                         };
                     };
                 };
                 /** @description Bad request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Sandbox not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/sandboxes/{sandbox_id}/terminate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Terminate sandbox
+         * @description Terminate a sandbox (keeps it visible in database)
+         */
+        post: {
+            parameters: {
+                query?: {
+                    /** @description Force termination */
+                    force?: boolean;
+                };
+                header?: never;
+                path: {
+                    /** @description Sandbox ID */
+                    sandbox_id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Sandbox termination initiated */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data?: {
+                                sandbox_id?: string;
+                                status?: string;
+                                note?: string;
+                            };
+                            message?: string;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/sandboxes/{sandbox_id}/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start sandbox
+         * @description Start a created sandbox
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Sandbox ID */
+                    sandbox_id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Sandbox started successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data?: {
+                                /** @description Sandbox access domain */
+                                domain?: string;
+                            };
+                            message?: string;
+                        };
+                    };
+                };
+                /** @description Bad request (e.g., sandbox already running) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Sandbox not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/sandboxes/{sandbox_id}/stop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Stop sandbox
+         * @description Stop a running sandbox
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Sandbox ID */
+                    sandbox_id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Sandbox stopped successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SuccessResponse"];
+                    };
+                };
+                /** @description Bad request (e.g., sandbox not running) */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -425,7 +1038,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/sandboxes/{sandbox_id}/ports": {
+    "/v1/sandboxes/stats": {
         parameters: {
             query?: never;
             header?: never;
@@ -433,477 +1046,32 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get sandbox ports
-         * @description Get all ports (template + custom) for a sandbox
+         * Get sandbox statistics
+         * @description Get sandbox statistics for the current user
          */
         get: {
             parameters: {
                 query?: never;
                 header?: never;
-                path: {
-                    /** @description Sandbox ID */
-                    sandbox_id: string;
-                };
+                path?: never;
                 cookie?: never;
             };
             requestBody?: never;
             responses: {
-                /** @description Port list */
+                /** @description Sandbox statistics */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
                         "application/json": {
-                            data?: {
-                                custom_ports?: components["schemas"]["PortConfig"][];
-                                ports?: components["schemas"]["PortConfig"][];
-                                template_ports?: components["schemas"]["PortConfig"][];
-                            };
+                            data?: components["schemas"]["SandboxStatsResponse"];
                         };
-                    };
-                };
-                /** @description Sandbox not found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
                     };
                 };
             };
         };
         put?: never;
-        /**
-         * Add custom port to sandbox
-         * @description Add a custom port to a running sandbox
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description Sandbox ID */
-                    sandbox_id: string;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        /** @description Port name */
-                        name: string;
-                        /**
-                         * Format: int32
-                         * @description Port number
-                         */
-                        port: number;
-                        /**
-                         * @description Port protocol
-                         * @default TCP
-                         * @enum {string}
-                         */
-                        protocol?: "TCP" | "UDP";
-                        /**
-                         * Format: int32
-                         * @description Service port (defaults to port)
-                         */
-                        service_port?: number;
-                    };
-                };
-            };
-            responses: {
-                /** @description Port added successfully */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            data?: components["schemas"]["SandboxResponse"];
-                            message?: string;
-                        };
-                    };
-                };
-                /** @description Bad request */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Sandbox not found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/sandboxes/{sandbox_id}/ports/{port}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /**
-         * Remove custom port from sandbox
-         * @description Remove a custom port from a running sandbox
-         */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description Port number to remove */
-                    port: number;
-                    /** @description Sandbox ID */
-                    sandbox_id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Port removed successfully */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            message?: string;
-                        };
-                    };
-                };
-                /** @description Bad request */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Sandbox not found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/sandboxes/{sandbox_id}/start": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Start sandbox
-         * @description Start a created sandbox
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description Sandbox ID */
-                    sandbox_id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Sandbox started successfully */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            data?: {
-                                /** @description Sandbox access domain */
-                                domain?: string;
-                            };
-                            message?: string;
-                        };
-                    };
-                };
-                /** @description Bad request (e.g., sandbox already running) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Sandbox not found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/sandboxes/{sandbox_id}/status": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get sandbox status (lightweight)
-         * @description Returns only sandbox_id, status, substatus, reason, updated_at for polling. Use this instead of GET /v1/sandboxes/{sandbox_id} for status polling to reduce payload.
-         */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description Sandbox ID */
-                    sandbox_id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Sandbox status */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            data?: components["schemas"]["SandboxStatusResponse"];
-                        };
-                    };
-                };
-                /** @description Sandbox not found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/sandboxes/{sandbox_id}/stop": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Stop sandbox
-         * @description Stop a running sandbox
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description Sandbox ID */
-                    sandbox_id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Sandbox stopped successfully */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["SuccessResponse"];
-                    };
-                };
-                /** @description Bad request (e.g., sandbox not running) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Sandbox not found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/sandboxes/{sandbox_id}/terminate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Terminate sandbox
-         * @description Terminate a sandbox (keeps it visible in database)
-         */
-        post: {
-            parameters: {
-                query?: {
-                    /** @description Force termination */
-                    force?: boolean;
-                };
-                header?: never;
-                path: {
-                    /** @description Sandbox ID */
-                    sandbox_id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Sandbox termination initiated */
-                202: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            data?: {
-                                note?: string;
-                                sandbox_id?: string;
-                                status?: string;
-                            };
-                            message?: string;
-                        };
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/sandboxes/{sandbox_id}/timeout": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /**
-         * Update sandbox timeout
-         * @description Update the timeout for a sandbox
-         */
-        put: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description Sandbox ID */
-                    sandbox_id: string;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["SandboxTimeoutRequest"];
-                };
-            };
-            responses: {
-                /** @description Timeout updated successfully */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            data?: {
-                                remaining_time?: number;
-                                timeout?: number;
-                                /** Format: date-time */
-                                timeout_at?: string;
-                                used_lifetime?: number;
-                            };
-                            message?: string;
-                        };
-                    };
-                };
-                /** @description Bad request */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
         post?: never;
         delete?: never;
         options?: never;
@@ -945,6 +1113,52 @@ export interface paths {
                     content: {
                         "application/json": {
                             data?: components["schemas"]["BatchDeleteResponse"];
+                            message?: string;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/sandboxes/batch-terminate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Batch terminate sandboxes
+         * @description Terminate multiple sandboxes in a single request
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["BatchTerminateRequest"];
+                };
+            };
+            responses: {
+                /** @description Batch terminate initiated */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data?: components["schemas"]["BatchOperationResponse"];
                             message?: string;
                         };
                     };
@@ -1049,93 +1263,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/sandboxes/batch-terminate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Batch terminate sandboxes
-         * @description Terminate multiple sandboxes in a single request
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["BatchTerminateRequest"];
-                };
-            };
-            responses: {
-                /** @description Batch terminate initiated */
-                202: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            data?: components["schemas"]["BatchOperationResponse"];
-                            message?: string;
-                        };
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/sandboxes/stats": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get sandbox statistics
-         * @description Get sandbox statistics for the current user
-         */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Sandbox statistics */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            data?: components["schemas"]["SandboxStatsResponse"];
-                        };
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/v1/scalebox-regions": {
         parameters: {
             query?: never;
@@ -1196,55 +1323,36 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        BatchDeleteRequest: {
-            /**
-             * @description Force deletion even if sandboxes are running
-             * @default false
-             */
-            force: boolean;
-            /** @description List of sandbox IDs to delete */
-            sandbox_ids: string[];
-        };
-        BatchDeleteResponse: {
-            /** @description List of failed deletions with errors */
-            failed?: {
-                error?: string;
-                sandbox_id?: string;
-            }[];
-            /** @description Number of failed deletions */
-            failed_count?: number;
-            /** @description List of successfully deleted sandbox IDs */
-            successful?: string[];
-            /** @description Number of successfully deleted sandboxes */
-            successful_count?: number;
-        };
-        BatchIdsRequest: {
-            /** @description List of sandbox IDs */
-            sandbox_ids: string[];
-        };
-        BatchOperationResponse: {
-            failed?: number;
-            results?: components["schemas"]["BatchOperationResult"][];
-            successful?: number;
-            total?: number;
-        };
-        BatchOperationResult: {
-            /** @description Error message when status is error */
-            error?: string;
-            sandbox_id?: string;
-            /** @enum {string} */
-            status?: "success" | "error";
-        };
-        BatchTerminateRequest: {
-            /**
-             * @description Force termination even if sandboxes are running
-             * @default false
-             */
-            force: boolean;
-            /** @description List of sandbox IDs to terminate */
-            sandbox_ids: string[];
-        };
         CreateSandboxRequest: {
+            /** @description Sandbox name */
+            name?: string;
+            /** @description Sandbox description */
+            description?: string;
+            /** @description Template name or ID (defaults to "base") */
+            template?: string;
+            /** @description Project ID (optional, defaults to user's default project) */
+            project_id?: string;
+            /** @description Number of CPU cores */
+            cpu_count?: number;
+            /** @description Memory in MB */
+            memory_mb?: number;
+            /** @description Storage in GB */
+            storage_gb?: number;
+            /** @description Flexible key-value metadata */
+            metadata?: {
+                [key: string]: string;
+            };
+            /** @description Timeout in seconds (defaults to 300) */
+            timeout?: number;
+            /** @description Environment variables */
+            env_vars?: {
+                [key: string]: string;
+            };
+            /**
+             * @description Security setting
+             * @default true
+             */
+            secure: boolean;
             /**
              * @description Internet access setting
              * @default true
@@ -1255,397 +1363,47 @@ export interface components {
              * @default false
              */
             auto_pause: boolean;
-            /** @description Number of CPU cores */
-            cpu_count?: number;
             /** @description Optional custom ports (ports not in template). Must have unique port numbers and names. */
             custom_ports?: components["schemas"]["PortConfig"][];
-            /** @description Sandbox description */
-            description?: string;
-            /** @description Environment variables */
-            env_vars?: {
-                [key: string]: string;
-            };
-            /** @description Locality preferences for sandbox scheduling (optional) */
-            locality?: components["schemas"]["LocalityConfig"];
-            /** @description Memory in MB */
-            memory_mb?: number;
-            /** @description Flexible key-value metadata */
-            metadata?: {
-                [key: string]: string;
-            };
-            /** @description Sandbox name */
-            name?: string;
             /**
              * @description Network proxy country for sandbox traffic routing (optional)
              * @enum {string}
              */
             net_proxy_country?: "united-states" | "canada" | "japan" | "malaysia" | "brazil" | "france" | "italy" | "china" | "hong-kong";
-            /** @description Project ID (optional, defaults to user's default project) */
-            project_id?: string;
+            /** @description Locality preferences for sandbox scheduling (optional) */
+            locality?: components["schemas"]["LocalityConfig"];
+            /** @description Object storage mounts (S3-compatible). Accepts a single object (legacy)
+             *     or an array. mount_point must be absolute path. At least one of region
+             *     or endpoint required per mount.
+             *      */
+            object_storage?: components["schemas"]["ObjectStorageConfig"][];
+            /** @description When true, worker container mounts object storage via s3fs directly
+             *     (worker image must have s3fs installed). When false/omitted, sidecar
+             *     handles mount. Only for custom templates.
+             *      */
+            object_storage_direct_mount?: boolean;
+            /** @description Path to s3fs binary in worker container. Only used when
+             *     object_storage_direct_mount is true. Defaults to "s3fs".
+             *      */
+            s3fs_executable_path?: string;
             /**
-             * @description Security setting
-             * @default true
-             */
-            secure: boolean;
-            /** @description Storage in GB */
-            storage_gb?: number;
-            /** @description Template name or ID (defaults to "base") */
-            template?: string;
-            /** @description Timeout in seconds (defaults to 300) */
-            timeout?: number;
-        };
-        CreateTemplateFromSandboxRequest: {
-            /** @description CPU count (nil/omit = inherit from base template, 0 = explicitly inherit, >0 = use) */
-            cpu_count?: number;
-            /** @description Custom startup command */
-            custom_command?: string;
-            /** @description Template description */
-            description?: string;
-            /** @description Memory in MB (nil/omit = inherit from base template, 0 = explicitly inherit, >0 = use) */
-            memory_mb?: number;
-            /** @description Template name (must be unique for the user) */
-            name: string;
-            /** @description Additional ports as JSON string (added to inherited ports from base template) */
-            ports?: string;
-            /** @description Custom readiness probe command */
-            ready_command?: string;
-            /** @description If true, remove unprotected ports from base template */
-            reset_ports?: boolean;
-            /**
-             * @description Template visibility: 'private' (owner only), 'account_shared' (account members), or 'public' (all users). Admin users can create public templates (default: 'public' for admin, 'private' for non-admin)
-             *
-             * @enum {string}
-             */
-            visibility?: "private" | "account_shared" | "public";
-        };
-        Error: {
-            /** @description Error code */
-            code?: string;
-            /** @description Additional error details */
-            details?: Record<string, never>;
-            /** @description Error message */
-            message: string;
-        };
-        /** @description Locality preferences for sandbox scheduling. Controls where the sandbox
-         *     will be scheduled based on geographical preferences. By default, locality
-         *     is disabled and the system uses load-balanced scheduling.
-         *      */
-        LocalityConfig: {
-            /**
-             * @description Automatically detect the preferred region from the source IP address.
-             *     When enabled, the system will infer the region from your IP address using GeoIP.
-             *     If detection fails or the detected region is not available, the system will
-             *     fall back to default load-balanced scheduling (unless force is true).
+             * @description When true, return immediately (client polls for status).
+             *     When false/omitted, wait until running or failed (default).
              *
              * @default false
              */
-            auto_detect: boolean;
-            /**
-             * @description **Hard constraint**: fail if the requested region is not available.
-             *
-             *     When force is true and the specified region has no available clusters,
-             *     sandbox creation will fail with a 409 Conflict error instead of falling back
-             *     to other regions.
-             *
-             *     **WARNING**: Use this option carefully. If the requested region is unavailable,
-             *     sandbox creation will fail even if other regions have capacity. This is a
-             *     hard constraint that prioritizes region preference over availability.
-             *
-             *     **Best practice**: Only use force=true when you have strict compliance or
-             *     regulatory requirements. For most use cases, use force=false (default) to
-             *     allow graceful fallback to other available regions.
-             *
-             * @default false
-             */
-            force: boolean;
-            /**
-             * @description Explicitly specify a preferred Sandbox Region. When provided, the system
-             *     will prefer clusters in this region. If no clusters are available in this
-             *     region and force is false, the system will fall back to other available clusters.
-             *     Use GET /v1/scalebox-regions to get a list of available regions.
-             *
-             * @example us-east
-             */
-            region?: string;
+            is_async: boolean;
         };
-        PortConfig: {
-            /**
-             * @description Whether port is protected (template ports only, cannot be removed)
-             * @default false
-             */
-            is_protected: boolean;
-            /** @description Port name (required, must be DNS-compatible) */
-            name: string;
-            /**
-             * Format: int32
-             * @description Container port number
-             */
-            port: number;
-            /**
-             * @description Port protocol
-             * @default TCP
-             * @enum {string}
-             */
-            protocol: "TCP" | "UDP";
-            /**
-             * Format: int32
-             * @description Kubernetes service port (defaults to port if not provided)
-             */
-            service_port?: number;
+        UpdateSandboxRequest: {
+            /** @description New timeout in seconds (must be greater than current timeout) */
+            timeout: number;
         };
-        SandboxDeploymentResponse: {
-            /** @description Access token for the sandbox */
-            access_token?: string;
-            /** @description External access URL */
-            access_url?: string;
-            /** @description Cluster ID where sandbox is deployed */
-            cluster_id?: string;
-            /** @description Kubernetes deployment name */
-            deployment?: string;
-            /**
-             * Format: date-time
-             * @description Deployment timestamp
-             */
-            deployment_at?: string;
-            /** @description Driver version used for deployment */
-            driver_version?: string;
-            /** @description Kubernetes ingress name */
-            ingress?: string;
-            /** @description Internal cluster URL */
-            internal_url?: string;
-            /** @description Kubernetes namespace */
-            namespace?: string;
-            /** @description Sandbox ID */
-            sandbox_id?: string;
-            /** @description Type of sandbox deployed */
-            sandbox_type?: string;
-            /** @description Kubernetes service name */
-            service?: string;
-            /** @description Deployment status */
-            status?: string;
-        };
-        SandboxResponse: {
-            /** @description Dynamic total paused time including current pause if paused */
-            actual_total_paused_seconds?: number;
-            /**
-             * Format: int64
-             * @description Dynamic total running time including current phase if running
-             */
-            actual_total_running_seconds?: number;
-            /**
-             * Format: date-time
-             * @description When sandbox was allocated to cluster
-             */
-            allocation_time?: string | null;
-            /** @description Internet access setting */
-            allow_internet_access?: boolean;
-            /** @description If true, timeout causes auto-pause; if false, termination (IMMUTABLE) */
-            auto_pause?: boolean;
-            /** @description Kubernetes cluster ID where sandbox is deployed */
-            cluster_id?: string | null;
-            /** @description Container name within the pod */
-            container_name?: string | null;
-            cost?: {
-                /**
-                 * Format: float
-                 * @description Hourly rate for this sandbox
-                 */
-                hourlyRate?: number;
-                /**
-                 * Format: float
-                 * @description Total cost accumulated
-                 */
-                totalCost?: number;
-            };
-            /** @description Number of CPU cores */
-            cpu_count?: number;
-            /**
-             * Format: date-time
-             * @description Creation timestamp
-             */
-            created_at?: string;
-            /** @description Custom ports added to sandbox */
-            custom_ports?: components["schemas"]["PortConfig"][];
-            /**
-             * @description Whether sandbox deletion is in progress
-             * @default false
-             */
-            deletion_in_progress: boolean;
-            /** @description Sandbox description */
-            description?: string;
-            /**
-             * Format: date-time
-             * @description When sandbox lifecycle ended
-             */
-            ended_at?: string | null;
-            /** @description Environment variables */
-            env_vars?: {
-                [key: string]: string;
-            };
-            /** @description Token for sandbox access */
-            envd_access_token?: string | null;
-            /** @description Last known Kubernetes pod status */
-            last_pod_status?: string | null;
-            /** @description Memory in MB */
-            memory_mb?: number;
-            /** @description Metadata key-value pairs */
-            metadata?: {
-                [key: string]: string;
-            };
-            /** @description Sandbox name */
-            name?: string;
-            /** @description User namespace ID in the cluster */
-            namespace_id?: string | null;
-            /**
-             * @description Network proxy country setting
-             * @enum {string|null}
-             */
-            net_proxy_country?: "united-states" | "canada" | "japan" | "malaysia" | "brazil" | "france" | "italy" | "china" | "hong-kong" | null;
-            /** @description Network proxy config (when token generated) */
-            network_proxy?: {
-                proxy_configs?: {
-                    host?: string;
-                    password?: string;
-                    port?: number;
-                    username?: string;
-                };
-                /** @description Full proxy URL (username:password@host:port) */
-                proxy_url?: string;
-            } | null;
-            /** @description Node where pod is scheduled */
-            node_name?: string | null;
-            owner?: {
-                /** @description Display name of the owner */
-                display_name?: string | null;
-                /** @description Email of the owner */
-                email?: string;
-                /** @description User ID of the owner */
-                user_id?: string;
-                /** @description Username of the owner */
-                username?: string;
-            };
-            /** @description Owner user ID */
-            owner_user_id?: string;
-            /** @description Number of days sandbox data persists after termination (from plan) */
-            persistence_days?: number;
-            /** @description Days remaining until data deletion */
-            persistence_days_remaining?: number | null;
-            /**
-             * Format: date-time
-             * @description When sandbox data will be permanently deleted
-             */
-            persistence_expires_at?: string | null;
-            /** @description Pod IP address */
-            pod_ip?: string | null;
-            /** @description Kubernetes pod name */
-            pod_name?: string | null;
-            /** @description Kubernetes pod UID */
-            pod_uid?: string | null;
-            /** @description All ports (template ports + custom ports) */
-            ports?: components["schemas"]["PortConfig"][];
-            /** @description Project ID */
-            project_id?: string;
-            /** @description Project name */
-            project_name?: string;
-            /** @description Reason for current status or failure */
-            reason?: string;
-            resources?: {
-                /** @description Bandwidth allocation (placeholder) */
-                bandwidth?: number;
-                /** @description CPU cores allocated */
-                cpu?: number;
-                /** @description Memory in MB allocated */
-                memory?: number;
-                /** @description Storage in GB allocated */
-                storage?: number;
-            };
-            /** @description Sandbox access domain */
-            sandbox_domain?: string | null;
-            /** @description Unique sandbox identifier */
-            sandbox_id?: string;
-            /** @description Security setting */
-            secure?: boolean;
-            /**
-             * Format: date-time
-             * @description When sandbox started running
-             */
-            started_at?: string | null;
-            /**
-             * @description Current sandbox status
-             * @enum {string}
-             */
-            status?: "created" | "starting" | "running" | "pausing" | "paused" | "resuming" | "terminating" | "terminated" | "failed";
-            /**
-             * Format: date-time
-             * @description When sandbox stopped
-             */
-            stopped_at?: string | null;
-            /** @description Storage in GB */
-            storage_gb?: number;
-            /**
-             * @description Detailed substatus for transitional states
-             * @enum {string}
-             */
-            substatus?: "allocating" | "deploying" | "initializing" | "waiting_ready" | "cleaning_resources" | "cleaning_data";
-            /** @description Template ID */
-            template_id?: string;
-            /** @description Template name */
-            template_name?: string;
-            /** @description Ports from template */
-            template_ports?: components["schemas"]["PortConfig"][];
-            /** @description Timeout in seconds */
-            timeout?: number;
-            /**
-             * Format: date-time
-             * @description When sandbox will timeout
-             */
-            timeout_at?: string | null;
-            /** @description Cumulative paused time across all pause periods (persistent) */
-            total_paused_seconds?: number;
-            /** @description Cumulative running time across all running phases (persistent) */
-            total_running_seconds?: number;
-            /**
-             * Format: date-time
-             * @description Last update timestamp
-             */
-            updated_at?: string;
-            /** @description Uptime in seconds */
-            uptime?: number;
-        };
-        SandboxStatsResponse: {
-            /**
-             * Format: float
-             * @description Average CPU usage percentage
-             */
-            avg_cpu_usage?: number;
-            /**
-             * Format: float
-             * @description Average memory usage percentage
-             */
-            avg_memory_usage?: number;
-            /** @description Number of failed sandboxes */
-            failed_sandboxes?: number;
-            /** @description Number of running sandboxes */
-            running_sandboxes?: number;
-            /** @description Number of terminated sandboxes */
-            terminated_sandboxes?: number;
-            /**
-             * Format: float
-             * @description Total cost accumulated
-             */
-            total_cost?: number;
-            /** @description Total number of sandboxes */
-            total_sandboxes?: number;
-            /**
-             * Format: float
-             * @description Total uptime in hours
-             */
-            total_uptime_hours?: number;
+        SandboxTimeoutRequest: {
+            /** @description New timeout in seconds (must be >= already used lifetime) */
+            timeout: number;
         };
         /** @description Lightweight status for polling (GET /v1/sandboxes/{sandbox_id}/status) */
         SandboxStatusResponse: {
-            /** @description Reason for current status or failure */
-            reason?: string | null;
             /** @description Sandbox ID */
             sandbox_id?: string;
             /**
@@ -1658,15 +1416,403 @@ export interface components {
              * @enum {string|null}
              */
             substatus?: "allocating" | "deploying" | "initializing" | "waiting_ready" | "cleaning_resources" | "cleaning_data" | null;
+            /** @description Reason for current status or failure */
+            reason?: string | null;
             /**
              * Format: date-time
              * @description Last update timestamp
              */
             updated_at?: string;
         };
-        SandboxTimeoutRequest: {
-            /** @description New timeout in seconds (must be >= already used lifetime) */
-            timeout: number;
+        SandboxResponse: {
+            /** @description Unique sandbox identifier */
+            sandbox_id?: string;
+            /** @description Sandbox name */
+            name?: string;
+            /** @description Sandbox description */
+            description?: string;
+            /** @description Template ID */
+            template_id?: string;
+            /** @description Template name */
+            template_name?: string;
+            /** @description Owner user ID */
+            owner_user_id?: string;
+            /** @description Project ID */
+            project_id?: string;
+            /** @description Project name */
+            project_name?: string;
+            /** @description Number of CPU cores */
+            cpu_count?: number;
+            /** @description Memory in MB */
+            memory_mb?: number;
+            /** @description Storage in GB */
+            storage_gb?: number;
+            /** @description Timeout in seconds */
+            timeout?: number;
+            /** @description Security setting */
+            secure?: boolean;
+            /** @description Internet access setting */
+            allow_internet_access?: boolean;
+            /** @description Metadata key-value pairs */
+            metadata?: {
+                [key: string]: string;
+            };
+            /** @description Environment variables */
+            env_vars?: {
+                [key: string]: string;
+            };
+            /**
+             * @description Current sandbox status
+             * @enum {string}
+             */
+            status?: "created" | "starting" | "running" | "pausing" | "paused" | "resuming" | "terminating" | "terminated" | "failed";
+            /**
+             * @description Detailed substatus for transitional states
+             * @enum {string}
+             */
+            substatus?: "allocating" | "deploying" | "initializing" | "waiting_ready" | "cleaning_resources" | "cleaning_data";
+            /** @description Reason for current status or failure */
+            reason?: string;
+            /**
+             * Format: date-time
+             * @description When sandbox started running
+             */
+            started_at?: string | null;
+            /**
+             * Format: date-time
+             * @description When sandbox stopped
+             */
+            stopped_at?: string | null;
+            /**
+             * Format: date-time
+             * @description When sandbox will timeout
+             */
+            timeout_at?: string | null;
+            /**
+             * Format: date-time
+             * @description When sandbox lifecycle ended
+             */
+            ended_at?: string | null;
+            /**
+             * Format: date-time
+             * @description When sandbox was last paused
+             */
+            paused_at?: string | null;
+            /**
+             * Format: date-time
+             * @description When sandbox pause operation started
+             */
+            pausing_at?: string | null;
+            /**
+             * Format: date-time
+             * @description When sandbox was last resumed
+             */
+            resumed_at?: string | null;
+            /**
+             * Format: date-time
+             * @description Creation timestamp
+             */
+            created_at?: string;
+            /**
+             * Format: date-time
+             * @description Last update timestamp
+             */
+            updated_at?: string;
+            /** @description Sandbox access domain */
+            sandbox_domain?: string | null;
+            /** @description Token for sandbox access */
+            envd_access_token?: string | null;
+            /** @description Uptime in seconds */
+            uptime?: number;
+            /** @description Cumulative running time across all running phases (persistent) */
+            total_running_seconds?: number;
+            /**
+             * Format: int64
+             * @description Dynamic total running time including current phase if running
+             */
+            actual_total_running_seconds?: number;
+            /** @description Cumulative paused time across all pause periods (persistent) */
+            total_paused_seconds?: number;
+            /** @description Dynamic total paused time including current pause if paused */
+            actual_total_paused_seconds?: number;
+            /** @description Number of days sandbox data persists after termination (from plan) */
+            persistence_days?: number;
+            /**
+             * Format: date-time
+             * @description When sandbox data will be permanently deleted
+             */
+            persistence_expires_at?: string | null;
+            /** @description Days remaining until data deletion */
+            persistence_days_remaining?: number | null;
+            /** @description If true, timeout causes auto-pause; if false, termination (IMMUTABLE) */
+            auto_pause?: boolean;
+            /** @description Network proxy config (when token generated) */
+            network_proxy?: {
+                /** @description Full proxy URL (username:password@host:port) */
+                proxy_url?: string;
+                proxy_configs?: {
+                    host?: string;
+                    port?: number;
+                    username?: string;
+                    password?: string;
+                };
+            } | null;
+            /** @description All ports (template ports + custom ports) */
+            ports?: components["schemas"]["PortConfig"][];
+            /** @description Ports from template */
+            template_ports?: components["schemas"]["PortConfig"][];
+            /** @description Custom ports added to sandbox */
+            custom_ports?: components["schemas"]["PortConfig"][];
+            /**
+             * @description Network proxy country setting
+             * @enum {string|null}
+             */
+            net_proxy_country?: "united-states" | "canada" | "japan" | "malaysia" | "brazil" | "france" | "italy" | "china" | "hong-kong" | null;
+            /** @description Object storage mounts (multi-path support, array format) */
+            object_storage?: components["schemas"]["ObjectStorageInfo"][];
+            /** @description Whether object storage is directly mounted via s3fs */
+            object_storage_direct_mount?: boolean;
+            /** @description S3fs executable path used for direct mount */
+            object_storage_s3fs_path?: string | null;
+            /** @description Kubernetes cluster ID where sandbox is deployed */
+            cluster_id?: string | null;
+            /** @description User namespace ID in the cluster */
+            namespace_id?: string | null;
+            /** @description Kubernetes pod name */
+            pod_name?: string | null;
+            /** @description Kubernetes pod UID */
+            pod_uid?: string | null;
+            /** @description Pod IP address */
+            pod_ip?: string | null;
+            /** @description Node where pod is scheduled */
+            node_name?: string | null;
+            /** @description Container name within the pod */
+            container_name?: string | null;
+            /**
+             * Format: date-time
+             * @description When sandbox was allocated to cluster
+             */
+            allocation_time?: string | null;
+            /** @description Last known Kubernetes pod status */
+            last_pod_status?: string | null;
+            /**
+             * @description Whether sandbox deletion is in progress
+             * @default false
+             */
+            deletion_in_progress: boolean;
+            resources?: {
+                /** @description CPU cores allocated */
+                cpu?: number;
+                /** @description Memory in MB allocated */
+                memory?: number;
+                /** @description Storage in GB allocated */
+                storage?: number;
+                /** @description Bandwidth allocation (placeholder) */
+                bandwidth?: number;
+            };
+            cost?: {
+                /**
+                 * Format: float
+                 * @description Hourly rate for this sandbox
+                 */
+                hourlyRate?: number;
+                /**
+                 * Format: float
+                 * @description Total cost accumulated
+                 */
+                totalCost?: number;
+            };
+            owner?: {
+                /** @description User ID of the owner */
+                user_id?: string;
+                /** @description Username of the owner */
+                username?: string;
+                /** @description Display name of the owner */
+                display_name?: string | null;
+                /** @description Email of the owner */
+                email?: string;
+            };
+            /** @description Computed remaining time until timeout */
+            remaining_seconds?: number | null;
+            /** @description Whether the template still exists */
+            template_exists?: boolean;
+            /** @description Template custom startup command */
+            template_custom_command?: string | null;
+            /** @description Template readiness probe command */
+            template_ready_command?: string | null;
+            /** @description Template source/image information */
+            template_source?: string | null;
+            /** @description Internal domain name for sandbox */
+            sandbox_domain_internal?: string | null;
+            /** @description NFS archive status (completed, protected, archiving) */
+            lifecycle_outcome?: string | null;
+            /** @description Whether web terminal is available */
+            web_terminal_available?: boolean;
+            /** @description Whether web file browser is available */
+            web_files_available?: boolean;
+        };
+        SandboxDeploymentResponse: {
+            /** @description Sandbox ID */
+            sandbox_id?: string;
+            /** @description Cluster ID where sandbox is deployed */
+            cluster_id?: string;
+            /** @description Kubernetes namespace */
+            namespace?: string;
+            /** @description External access URL */
+            access_url?: string;
+            /** @description Internal cluster URL */
+            internal_url?: string;
+            /** @description Access token for the sandbox */
+            access_token?: string;
+            /** @description Deployment status */
+            status?: string;
+            /**
+             * Format: date-time
+             * @description Deployment timestamp
+             */
+            deployment_at?: string;
+            /** @description Kubernetes deployment name */
+            deployment?: string;
+            /** @description Kubernetes service name */
+            service?: string;
+            /** @description Kubernetes ingress name */
+            ingress?: string;
+            /** @description Type of sandbox deployed */
+            sandbox_type?: string;
+            /** @description Driver version used for deployment */
+            driver_version?: string;
+        };
+        SandboxStatsResponse: {
+            /** @description Total number of sandboxes */
+            total_sandboxes?: number;
+            /** @description Number of running sandboxes */
+            running_sandboxes?: number;
+            /** @description Number of terminated sandboxes */
+            terminated_sandboxes?: number;
+            /** @description Number of failed sandboxes */
+            failed_sandboxes?: number;
+            /**
+             * Format: float
+             * @description Total cost accumulated
+             */
+            total_cost?: number;
+            /**
+             * Format: float
+             * @description Average CPU usage percentage
+             */
+            avg_cpu_usage?: number;
+            /**
+             * Format: float
+             * @description Average memory usage percentage
+             */
+            avg_memory_usage?: number;
+            /**
+             * Format: float
+             * @description Total uptime in hours
+             */
+            total_uptime_hours?: number;
+        };
+        BatchDeleteRequest: {
+            /** @description List of sandbox IDs to delete */
+            sandbox_ids: string[];
+            /**
+             * @description Force deletion even if sandboxes are running
+             * @default false
+             */
+            force: boolean;
+        };
+        BatchDeleteResponse: {
+            /** @description Number of successfully deleted sandboxes */
+            successful_count?: number;
+            /** @description Number of failed deletions */
+            failed_count?: number;
+            /** @description List of successfully deleted sandbox IDs */
+            successful?: string[];
+            /** @description List of failed deletions with errors */
+            failed?: {
+                sandbox_id?: string;
+                error?: string;
+            }[];
+        };
+        BatchIdsRequest: {
+            /** @description List of sandbox IDs */
+            sandbox_ids: string[];
+        };
+        BatchTerminateRequest: {
+            /** @description List of sandbox IDs to terminate */
+            sandbox_ids: string[];
+            /**
+             * @description Force termination even if sandboxes are running
+             * @default false
+             */
+            force: boolean;
+        };
+        BatchOperationResult: {
+            sandbox_id?: string;
+            /** @enum {string} */
+            status?: "success" | "error";
+            /** @description Error message when status is error */
+            error?: string;
+        };
+        BatchOperationResponse: {
+            total?: number;
+            successful?: number;
+            failed?: number;
+            results?: components["schemas"]["BatchOperationResult"][];
+        };
+        SuccessResponse: {
+            success?: boolean;
+            message?: string;
+            data?: Record<string, never>;
+        };
+        PortConfig: {
+            /**
+             * Format: int32
+             * @description Container port number
+             */
+            port: number;
+            /**
+             * Format: int32
+             * @description Kubernetes service port (defaults to port if not provided)
+             */
+            service_port?: number;
+            /**
+             * @description Port protocol
+             * @default TCP
+             * @enum {string}
+             */
+            protocol: "TCP" | "UDP";
+            /** @description Port name (required, must be DNS-compatible) */
+            name: string;
+            /**
+             * @description Whether port is protected (template ports only, cannot be removed)
+             * @default false
+             */
+            is_protected: boolean;
+        };
+        CreateTemplateFromSandboxRequest: {
+            /** @description Template name (must be unique for the user) */
+            name: string;
+            /** @description Template description */
+            description?: string;
+            /**
+             * @description Template visibility: 'private' (owner only), 'account_shared' (account members), or 'public' (all users). Admin users can create public templates (default: 'public' for admin, 'private' for non-admin)
+             *
+             * @enum {string}
+             */
+            visibility?: "private" | "account_shared" | "public";
+            /** @description CPU count (nil/omit = inherit from base template, 0 = explicitly inherit, >0 = use) */
+            cpu_count?: number;
+            /** @description Memory in MB (nil/omit = inherit from base template, 0 = explicitly inherit, >0 = use) */
+            memory_mb?: number;
+            /** @description Additional ports as JSON string (added to inherited ports from base template) */
+            ports?: string;
+            /** @description If true, remove unprotected ports from base template */
+            reset_ports?: boolean;
+            /** @description Custom startup command */
+            custom_command?: string;
+            /** @description Custom readiness probe command */
+            ready_command?: string;
         };
         ScaleboxRegion: {
             /**
@@ -1680,14 +1826,91 @@ export interface components {
              */
             name: string;
         };
-        SuccessResponse: {
-            data?: Record<string, never>;
-            message?: string;
-            success?: boolean;
+        /** @description Locality preferences for sandbox scheduling. Controls where the sandbox
+         *     will be scheduled based on geographical preferences. By default, locality
+         *     is disabled and the system uses load-balanced scheduling.
+         *
+         *     Priority rules:
+         *     - region takes precedence over auto_detect. If both are set, auto_detect is ignored.
+         *     - force only applies when region is explicitly set. It is ignored for auto_detect mode.
+         *     - An empty object (all defaults) is valid and means disabled (default scheduling).
+         *      */
+        LocalityConfig: {
+            /**
+             * @description Automatically detect the preferred region from the source IP address using GeoIP.
+             *     Best-effort: if detection fails or the region is unavailable, silently falls back
+             *     to default load-balanced scheduling.
+             *     Note: If region is also set, auto_detect is ignored (region takes precedence).
+             *
+             * @default false
+             */
+            auto_detect: boolean;
+            /**
+             * @description Explicitly specify a preferred Sandbox Region. Takes precedence over auto_detect.
+             *     When provided, the system will prefer clusters in this region.
+             *     If no clusters are available and force is false, falls back to other clusters.
+             *     Use GET /v1/scalebox-regions to get a list of available regions.
+             *
+             * @example us-east
+             */
+            region?: string;
+            /**
+             * @description Hard constraint: fail if the requested region is not available.
+             *     Only applies when region is explicitly set; ignored for auto_detect mode.
+             *
+             *     When force is true and the specified region has no available clusters,
+             *     sandbox creation will fail with a 409 Conflict error instead of falling back.
+             *
+             *     Best practice: Only use force=true for strict compliance/regulatory requirements.
+             *     For most use cases, use force=false (default) for graceful fallback.
+             *
+             * @default false
+             */
+            force: boolean;
         };
-        UpdateSandboxRequest: {
-            /** @description New timeout in seconds (must be greater than current timeout) */
-            timeout: number;
+        /** @description Object storage configuration for mounting S3-compatible storage.
+         *     At least one of region or endpoint must be provided.
+         *      */
+        ObjectStorageConfig: {
+            /**
+             * @description Object storage URI. Supported schemes: s3://, oss://, cos://
+             * @example s3://my-bucket/data/prefix/
+             */
+            uri: string;
+            /**
+             * @description Absolute mount path inside sandbox. Must start with /
+             * @example /mnt/oss
+             */
+            mount_point: string;
+            /** @description S3-compatible access key (not stored in backend DB) */
+            access_key: string;
+            /** @description S3-compatible secret key (not stored in backend DB) */
+            secret_key: string;
+            /**
+             * @description Storage region. At least one of region or endpoint required.
+             * @example ap-east-1
+             */
+            region?: string;
+            /**
+             * @description S3-compatible endpoint URL. At least one of region or endpoint required.
+             * @example https://s3.ap-east-1.amazonaws.com
+             */
+            endpoint?: string;
+        };
+        /** @description Object storage mount information (credentials not returned for security) */
+        ObjectStorageInfo: {
+            /** @description Object storage URI */
+            uri?: string;
+            /** @description Mount point path inside sandbox */
+            mount_point?: string;
+        };
+        Error: {
+            /** @description Error message */
+            message: string;
+            /** @description Error code */
+            code?: string;
+            /** @description Additional error details */
+            details?: Record<string, never>;
         };
     };
     responses: never;
