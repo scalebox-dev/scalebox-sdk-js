@@ -1,3 +1,17 @@
+# [5.2.0](https://github.com/scalebox-dev/scalebox-sdk-js/compare/v5.1.1...v5.2.0) (2026-03-20)
+
+
+### Bug Fixes
+
+* **security:** bump flatted 3.4.1 → 3.4.2 to fix prototype pollution (GHSA-rf6f-7fwh-wjgh) ([3a2c8d9](https://github.com/scalebox-dev/scalebox-sdk-js/commit/3a2c8d98e7f43c0e6128146fd9695f69c0faaca2))
+
+
+### Features
+
+* **openapi:** sync spec with backend, add object storage & locality docs ([1aa290b](https://github.com/scalebox-dev/scalebox-sdk-js/commit/1aa290b0c911731f2f302f718138a8e274e140a1))
+* **sandbox:** support multi-path OSS mounting with backward compat ([cd72d49](https://github.com/scalebox-dev/scalebox-sdk-js/commit/cd72d49a9dab8217104f84c2996df11288b5b79a))
+* **types:** add objectStorages array field to SandboxInfo ([a9d3910](https://github.com/scalebox-dev/scalebox-sdk-js/commit/a9d39109fc7c6118954881ab4ce6efff0d879b6b))
+
 ## [5.1.1](https://github.com/scalebox-dev/scalebox-sdk-js/compare/v5.1.0...v5.1.1) (2026-02-25)
 
 
