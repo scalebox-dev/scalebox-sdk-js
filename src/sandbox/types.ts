@@ -167,38 +167,46 @@ export interface SandboxUrlOpts {
 }
 
 /**
- * Object storage configuration for mounting S3-compatible storage
+ * Object storage configuration for mounting S3-compatible storage.
+ *
+ * At least one of `region` or `endpoint` must be provided.
  */
 export interface ObjectStorageConfig {
   /**
-   * S3 URI (e.g., "s3://bucket-name/path/prefix/")
+   * Object storage URI. Supported schemes: `s3://`, `oss://`, `cos://`.
+   *
+   * @example 's3://my-bucket/data/prefix/'
    */
   uri: string
-  
+
   /**
-   * Mount point path in the sandbox (e.g., "/mnt/oss")
+   * Absolute mount path inside the sandbox. Must start with `/`.
+   *
+   * @example '/mnt/oss'
    */
   mountPoint: string
-  
+
   /**
-   * S3 access key
+   * S3-compatible access key (required, never stored in backend DB).
    */
   accessKey: string
-  
+
   /**
-   * S3 secret key
+   * S3-compatible secret key (required, never stored in backend DB).
    */
   secretKey: string
-  
+
   /**
-   * AWS region (e.g., "ap-east-1")
+   * Storage region (e.g., `"ap-east-1"`).
+   * At least one of `region` or `endpoint` must be provided.
    */
-  region: string
-  
+  region?: string
+
   /**
-   * S3 endpoint URL (e.g., "https://s3.ap-east-1.amazonaws.com")
+   * S3-compatible endpoint URL (e.g., `"https://s3.ap-east-1.amazonaws.com"`).
+   * At least one of `region` or `endpoint` must be provided.
    */
-  endpoint: string
+  endpoint?: string
 }
 
 /**

@@ -128,16 +128,20 @@ export interface SandboxOpts extends SandboxApiOpts {
   objectStorages?: ObjectStorageConfig[]
 
   /**
-   * Custom templates only: when true, the worker process mounts OSS directly (s3fs);
-   * when false or omitted, the sidecar container handles mounting (default).
+   * Custom templates only: when true, the worker process mounts OSS directly
+   * via s3fs; when false or omitted, the sidecar container handles mounting (default).
    * Ignored for scalebox_family templates.
+   *
+   * **Note:** When enabled, the worker image must have `s3fs` installed,
+   * or you must specify `s3fsExecutablePath` to an available binary.
    *
    * @default false
    */
   objectStorageDirectMount?: boolean
 
   /**
-   * When `objectStorageDirectMount` is true: path to the s3fs executable.
+   * Path to the s3fs executable inside the worker container.
+   * Only used when `objectStorageDirectMount` is true.
    * When omitted or empty, the system uses the `s3fs` command from PATH.
    *
    * @example '/usr/local/bin/s3fs'
