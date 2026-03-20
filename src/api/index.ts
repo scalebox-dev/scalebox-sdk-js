@@ -164,6 +164,9 @@ function parseObjectStorageFromResponse(data: any): {
   }
 }
 
+/** @internal — exported for unit testing only */
+export { parseObjectStorageFromResponse as _parseObjectStorageFromResponse }
+
 /**
  * HTTP API 客户端
  * 基于 OpenAPI 规范，提供类型安全的 API 调用
