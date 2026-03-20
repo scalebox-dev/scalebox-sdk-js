@@ -131,6 +131,40 @@ function convertKeysToCamelCase(obj: any): any {
 }
 
 /**
+ * Parse the object_storage array from a backend response into SDK types.
+ *
+ * The backend changed object_storage from a single object to an array.
+ * objectStorage (single) = first element, for backward compat.
+ * objectStorages (array)  = all elements, for multi-mount use cases.
+ *
+ * Never reads object_storage_single — that field is deprecated on the backend
+ * and will be removed. Always derive from the array.
+ */
+function parseObjectStorageFromResponse(data: any): {
+  objectStorage?: { uri: string; mountPoint: string }
+  objectStorages?: { uri: string; mountPoint: string }[]
+} {
+  // Normalize: could be array (new backend) or single object (should not happen after backend update,
+  // but guard defensively for any edge case where old response shape appears)
+  const raw = data.objectStorage
+  if (!raw) return {}
+
+  const arr: any[] = Array.isArray(raw) ? raw : [raw]
+  if (arr.length === 0) return {}
+
+  const mapped = arr
+    .filter((m: any) => m && m.uri && m.mountPoint)
+    .map((m: any) => ({ uri: m.uri as string, mountPoint: m.mountPoint as string }))
+
+  if (mapped.length === 0) return {}
+
+  return {
+    objectStorage: mapped[0],
+    objectStorages: mapped,
+  }
+}
+
+/**
  * HTTP API 客户端
  * 基于 OpenAPI 规范，提供类型安全的 API 调用
  */
@@ -202,7 +236,10 @@ export class ApiClient {
     memoryMB?: number
     storageGB?: number
     // 对象存储配置
-    objectStorage?: ObjectStorageConfig
+    objectStorage?: ObjectStorageConfig          // single mount (backward compat)
+    objectStorages?: ObjectStorageConfig[]       // multi-mount (new)
+    objectStorageDirectMount?: boolean           // custom templates only
+    s3fsExecutablePath?: string                  // direct mount: path to s3fs binary
     // 自定义端口
     customPorts?: PortConfig[]
     // 网络代理国家
@@ -225,7 +262,17 @@ export class ApiClient {
       secure: request.secure ?? true, // 默认启用安全
       allowInternetAccess: request.allowInternetAccess ?? true, // 将转换为 allow_internet_access
       autoPause: request.autoPause ?? false, // 将转换为 auto_pause，超时后 pause 或 terminate
-      objectStorage: request.objectStorage, // 将转换为 object_storage
+      // Always send an array to the backend — the backend's new format requires it.
+      // The backend's UnmarshalJSON still accepts a single object for legacy clients,
+      // but the SDK should always send array to use the canonical new format.
+      objectStorage: (() => {
+        const all: ObjectStorageConfig[] = []
+        if (request.objectStorage) all.push(request.objectStorage)
+        if (request.objectStorages) all.push(...request.objectStorages)
+        return all.length > 0 ? all : undefined
+      })(),
+      objectStorageDirectMount: request.objectStorageDirectMount,
+      s3fsExecutablePath: request.s3fsExecutablePath,
       customPorts: request.customPorts, // 将转换为 custom_ports
       netProxyCountry: request.netProxyCountry, // 将转换为 net_proxy_country
       locality: request.locality // 将转换为 locality (nested object, keys will be converted)
@@ -338,16 +385,13 @@ export class ApiClient {
       projectName: sandboxData.projectName,
       
       // Object storage information (only uri and mountPoint are returned, credentials are not included for security)
-      objectStorage: sandboxData.objectStorage ? {
-        uri: sandboxData.objectStorage.uri,
-        mountPoint: sandboxData.objectStorage.mountPoint
-      } : undefined,
-      
+      ...parseObjectStorageFromResponse(sandboxData),
+
       // Port configuration
       ports: sandboxData.ports || [],
       templatePorts: sandboxData.templatePorts || sandboxData.template_ports || [],
       customPorts: sandboxData.customPorts || sandboxData.custom_ports || [],
-      
+
       // Network proxy configuration
       netProxyCountry: sandboxData.netProxyCountry,
       networkProxy: sandboxData.networkProxy ?? null
@@ -463,16 +507,13 @@ export class ApiClient {
       
       // Object storage information (only uri and mountPoint are returned, credentials are not included for security)
       // processResponse already converts snake_case to camelCase recursively, so object_storage -> objectStorage, mount_point -> mountPoint
-      objectStorage: sandboxData.objectStorage ? {
-        uri: sandboxData.objectStorage.uri,
-        mountPoint: sandboxData.objectStorage.mountPoint
-      } : undefined,
-      
+      ...parseObjectStorageFromResponse(sandboxData),
+
       // Port configuration
       ports: sandboxData.ports || [],
       templatePorts: sandboxData.templatePorts || sandboxData.template_ports || [],
       customPorts: sandboxData.customPorts || sandboxData.custom_ports || [],
-      
+
       // Network proxy configuration
       netProxyCountry: sandboxData.netProxyCountry,
       networkProxy: sandboxData.networkProxy ?? null
@@ -916,11 +957,8 @@ export class ApiClient {
       
       // Object storage information (only uri and mountPoint are returned, credentials are not included for security)
       // processResponse already converts snake_case to camelCase recursively, so object_storage -> objectStorage, mount_point -> mountPoint
-      objectStorage: sandbox.objectStorage ? {
-        uri: sandbox.objectStorage.uri,
-        mountPoint: sandbox.objectStorage.mountPoint
-      } : undefined,
-      
+      ...parseObjectStorageFromResponse(sandbox),
+
       // Port configuration
       ports: sandbox.ports || [],
       templatePorts: sandbox.templatePorts || sandbox.template_ports || [],
@@ -1131,10 +1169,7 @@ export class ApiClient {
       ownerUserId: sandboxData.ownerUserId || sandboxData.owner_user_id,
       projectId: sandboxData.projectId || sandboxData.project_id,
       projectName: sandboxData.projectName || sandboxData.project_name,
-      objectStorage: sandboxData.objectStorage ? {
-        uri: sandboxData.objectStorage.uri,
-        mountPoint: sandboxData.objectStorage.mountPoint
-      } : undefined,
+      ...parseObjectStorageFromResponse(sandboxData),
       ports: sandboxData.ports || [],
       templatePorts: sandboxData.templatePorts || sandboxData.template_ports || [],
       customPorts: sandboxData.customPorts || sandboxData.custom_ports || [],
@@ -1348,10 +1383,7 @@ export class ApiClient {
       ownerUserId: sandboxData.ownerUserId || sandboxData.owner_user_id,
       projectId: sandboxData.projectId || sandboxData.project_id,
       projectName: sandboxData.projectName || sandboxData.project_name,
-      objectStorage: sandboxData.objectStorage ? {
-        uri: sandboxData.objectStorage.uri,
-        mountPoint: sandboxData.objectStorage.mountPoint
-      } : undefined,
+      ...parseObjectStorageFromResponse(sandboxData),
       ports: sandboxData.ports || [],
       templatePorts: sandboxData.templatePorts || sandboxData.template_ports || [],
       customPorts: sandboxData.customPorts || sandboxData.custom_ports || [],

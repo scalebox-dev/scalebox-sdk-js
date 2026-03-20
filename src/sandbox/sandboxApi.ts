@@ -95,6 +95,56 @@ export interface SandboxOpts extends SandboxApiOpts {
   objectStorage?: ObjectStorageConfig
 
   /**
+   * Multiple object storage mount configurations for S3-compatible storage.
+   *
+   * Use this to mount more than one bucket/path simultaneously.
+   * When both `objectStorage` and `objectStorages` are provided, they are merged
+   * into a single array (objectStorage first, then objectStorages).
+   *
+   * @example
+   * ```ts
+   * const sandbox = await Sandbox.create('base', {
+   *   objectStorages: [
+   *     {
+   *       uri: 's3://bucket-a/data/',
+   *       mountPoint: '/mnt/data',
+   *       accessKey: 'KEY_A',
+   *       secretKey: 'SECRET_A',
+   *       region: 'ap-east-1',
+   *       endpoint: 'https://s3.ap-east-1.amazonaws.com'
+   *     },
+   *     {
+   *       uri: 's3://bucket-b/models/',
+   *       mountPoint: '/mnt/models',
+   *       accessKey: 'KEY_B',
+   *       secretKey: 'SECRET_B',
+   *       region: 'us-east-1',
+   *       endpoint: 'https://s3.us-east-1.amazonaws.com'
+   *     }
+   *   ]
+   * })
+   * ```
+   */
+  objectStorages?: ObjectStorageConfig[]
+
+  /**
+   * Custom templates only: when true, the worker process mounts OSS directly (s3fs);
+   * when false or omitted, the sidecar container handles mounting (default).
+   * Ignored for scalebox_family templates.
+   *
+   * @default false
+   */
+  objectStorageDirectMount?: boolean
+
+  /**
+   * When `objectStorageDirectMount` is true: path to the s3fs executable.
+   * When omitted or empty, the system uses the `s3fs` command from PATH.
+   *
+   * @example '/usr/local/bin/s3fs'
+   */
+  s3fsExecutablePath?: string
+
+  /**
    * Network proxy country for sandbox traffic routing.
    * 
    * When provided, sandbox network traffic will be routed through a proxy
@@ -488,6 +538,9 @@ export class SandboxApi {
         secure: opts?.secure ?? true,
         autoPause: opts?.autoPause ?? false,
         objectStorage: opts?.objectStorage,
+        objectStorages: opts?.objectStorages,              // NEW
+        objectStorageDirectMount: opts?.objectStorageDirectMount, // NEW
+        s3fsExecutablePath: opts?.s3fsExecutablePath,      // NEW
         netProxyCountry: opts?.netProxyCountry,
         locality: opts?.locality
       })
