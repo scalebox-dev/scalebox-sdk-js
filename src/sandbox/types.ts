@@ -104,7 +104,8 @@ export interface SandboxInfo {
   projectName?: string
   
   // Object storage mount information
-  objectStorage?: ObjectStorageInfo
+  objectStorage?: ObjectStorageInfo    // backward compat: first mount only
+  objectStorages?: ObjectStorageInfo[] // all mounts (multi-path support)
   
   // Port configuration
   ports?: PortConfig[]
