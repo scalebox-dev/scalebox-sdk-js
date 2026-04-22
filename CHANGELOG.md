@@ -1,3 +1,18 @@
+# [5.3.0](https://github.com/scalebox-dev/scalebox-sdk-js/compare/v5.2.0...v5.3.0) (2026-04-22)
+
+
+### Bug Fixes
+
+* **ci:** upgrade actions to Node 24, replace npm-run-all with npm-run-all2 ([d0eb93c](https://github.com/scalebox-dev/scalebox-sdk-js/commit/d0eb93cc113ff86395c1d8df3848b7c20070822b))
+* **ci:** upgrade to Node 24-native actions (checkout@v6, setup-node@v6, action-setup@v5) ([f0a0e8e](https://github.com/scalebox-dev/scalebox-sdk-js/commit/f0a0e8e075882643cdb4d4b9e6df8cc28ed631ac))
+* **security:** resolve all audit vulnerabilities via overrides ([3b4b6f6](https://github.com/scalebox-dev/scalebox-sdk-js/commit/3b4b6f66ed5eaff75f589c896f08444de0921c9e))
+
+
+### Features
+
+* unified pagination and template API alignment ([#5](https://github.com/scalebox-dev/scalebox-sdk-js/issues/5)) ([6236b32](https://github.com/scalebox-dev/scalebox-sdk-js/commit/6236b329afbfa33f6cb793485e10ffbe31c1b0c3))
+* unified pagination and template API type-safety alignment ([e96d0d2](https://github.com/scalebox-dev/scalebox-sdk-js/commit/e96d0d24cecf9f1b4c3b4fd219259a294c4eaaf5))
+
 # [5.2.0](https://github.com/scalebox-dev/scalebox-sdk-js/compare/v5.1.1...v5.2.0) (2026-03-20)
 
 
