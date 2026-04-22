@@ -1656,12 +1656,14 @@ describe('Filesystem Handlers', () => {
         0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, // PNG signature
         0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52, // IHDR chunk
       ])
+      const localBinaryPath = path.join(tempDir, 'test-binary.bin')
       const localDownloadPath = path.join(tempDir, 'downloaded-binary.bin')
       
       await waitForSandboxHealth(sandbox)
       
-      // 1. Create binary file in sandbox
-      await sandbox.files.write(testFilePath, binaryContent.buffer)
+      // 1. Write binary to local file, then upload via uploadFile (reliable binary path)
+      fs.writeFileSync(localBinaryPath, binaryContent)
+      await sandbox.uploadFile(localBinaryPath, testFilePath)
       
       // 2. Generate signed download URL
       if (!sandbox.envdAccessToken) {

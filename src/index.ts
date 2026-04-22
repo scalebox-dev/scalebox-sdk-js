@@ -53,6 +53,7 @@ export {
 
 // HTTP API exports
 export { ApiClient } from './api'
+export type { ScaleboxListPagination } from './api/pagination'
 
 // Type exports
 export type { 
@@ -70,7 +71,9 @@ export type {
   PortConfig,
   LocalityConfig,
   ScaleboxRegion,
-  SandboxRegion
+  SandboxRegion,
+  ListSandboxesOpts,
+  ListSandboxesResult
 } from './sandbox/types'
 
 // Export filesystem types
@@ -142,13 +145,20 @@ export type {
   DirectImportTemplateResponse,
   ValidateCustomImageRequest,
   ValidateCustomImageResponse,
+  ValidateTemplateRequest,
+  ValidateTemplateResponse,
   ShareTemplateRequest,
   TemplateChainResponse,
   TemplateChainItem,
   ImportJobInfo,
+  ImportJobListStatusFilter,
   TemplateImportStatusResponse,
   ListImportJobsOpts,
   ListImportJobsResponse,
+  PrivateImageStorageUsage,
+  TemplateStatusUpdateResponse,
+  TemplateShareOperationResponse,
+  ImportExistingTemplateResponse,
   TemplateStatus,
   TemplateVisibility,
   TemplateSource,

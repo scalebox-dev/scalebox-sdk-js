@@ -63,7 +63,7 @@ describe('API Client - Template Import', () => {
         name,
         externalImageUrl: 'docker.io/library/nginx:alpine',
         ports: portsJson,
-        readyCommand: 'curl -sf http://localhost:80/ || exit 1'
+        readyCommand: JSON.stringify({ type: 'exec', command: 'curl -sf http://localhost:80/ || exit 1' })
       })
       expect(result.templateId).toBeDefined()
       expect(result.name).toBe(name)
@@ -158,7 +158,7 @@ describe('API Client - Template Import', () => {
         defaultMemoryMb: 2048,
         visibility: 'private',
         ...(customCommand ? { customCommand } : {}),
-        readyCommand: 'curl -sf http://localhost:80/ || exit 1'
+        readyCommand: JSON.stringify({ type: 'exec', command: 'curl -sf http://localhost:80/ || exit 1' })
       })
       templateId = template.templateId
       expect(template.templateId).toBeDefined()
@@ -208,7 +208,7 @@ describe('API Client - Template Import', () => {
         name,
         externalImageUrl: 'docker.io/library/redis:alpine',
         ports: portsJson,
-        readyCommand: 'redis-cli ping | grep -q PONG'
+        readyCommand: JSON.stringify({ type: 'exec', command: 'redis-cli ping | grep -q PONG' })
       })
       expect(result.templateId).toBeDefined()
       templateId = result.templateId

@@ -777,13 +777,18 @@ export class Sandbox {
  */
 export class SandboxPaginator {
   private _hasNext: boolean
-  private _nextToken?: string
+  /** Next 1-based page to request; undefined means first page (backend default). */
+  private _nextPage?: number
+  /** One-shot offset/skip applied only to the first fetch; cleared afterwards. */
+  private _firstOffset?: number
+  private _firstSkip?: number
 
   private readonly config: ConnectionConfig
   private client: ApiClient
 
   private query: SandboxListOpts['query']
   private readonly limit?: number
+  private readonly pageSize?: number
 
   constructor(opts?: SandboxListOpts) {
     this.config = new ConnectionConfig({
@@ -797,10 +802,13 @@ export class SandboxPaginator {
     this.client = new ApiClient(this.config)
 
     this._hasNext = true
-    this._nextToken = opts?.nextToken
+    this._nextPage = opts?.page
+    this._firstOffset = opts?.offset
+    this._firstSkip = opts?.skip
 
     this.query = opts?.query
     this.limit = opts?.limit
+    this.pageSize = opts?.pageSize
   }
 
   /**
@@ -811,10 +819,10 @@ export class SandboxPaginator {
   }
 
   /**
-   * Returns the next token to use for pagination.
+   * @deprecated The REST API uses page/limit pagination; this always returns `undefined`.
    */
   get nextToken(): string | undefined {
-    return this._nextToken
+    return undefined
   }
 
   /**
@@ -833,11 +841,18 @@ export class SandboxPaginator {
       const result = await this.client.listSandboxes({
         query: this.query,
         limit: this.limit,
-        nextToken: this.nextToken
+        pageSize: this.pageSize,
+        page: this._nextPage,
+        offset: this._firstOffset,
+        skip: this._firstSkip
       })
+      // offset/skip only apply to the first fetch; subsequent fetches walk via page.
+      this._firstOffset = undefined
+      this._firstSkip = undefined
 
-      this._nextToken = result.nextToken
-      this._hasNext = !!this._nextToken
+      const { pagination } = result
+      this._hasNext = pagination.totalPages > 0 && pagination.page < pagination.totalPages
+      this._nextPage = this._hasNext ? pagination.page + 1 : undefined
 
       return result.sandboxes
     } catch (error) {

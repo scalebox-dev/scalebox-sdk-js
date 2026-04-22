@@ -1,7 +1,17 @@
 import createClient from 'openapi-fetch'
-import { paths } from './schema.gen'
+import type { components, paths } from './schema.gen'
 import { ConnectionConfig } from '../connectionConfig'
-import { SandboxInfo, SandboxMetrics, SandboxQuery, ObjectStorageConfig, PortConfig, LocalityConfig, ScaleboxRegion } from '../sandbox/types'
+import {
+  SandboxInfo,
+  SandboxMetrics,
+  ObjectStorageConfig,
+  PortConfig,
+  LocalityConfig,
+  ScaleboxRegion,
+  ListSandboxesOpts,
+  ListSandboxesResult
+} from '../sandbox/types'
+import { parseScaleboxListBlock } from './pagination'
 import type {
   TemplateInfo,
   TemplateListFilters,
@@ -18,8 +28,22 @@ import type {
   TemplateImportStatusResponse,
   ImportJobInfo,
   ListImportJobsOpts,
-  ListImportJobsResponse
+  ListImportJobsResponse,
+  PrivateImageStorageUsage,
+  ValidateTemplateRequest,
+  ValidateTemplateResponse,
+  TemplateStatusUpdateResponse,
+  TemplateShareOperationResponse,
+  ImportExistingTemplateResponse
 } from '../template/types'
+
+type TemplatesListQuery = NonNullable<paths['/v1/templates']['get']['parameters']['query']>
+type ImportJobsListQuery = NonNullable<paths['/v1/import-jobs']['get']['parameters']['query']>
+type TemplateWriteBody = components['schemas']['TemplateWriteRequestBody']
+type DirectImportRequestBody = components['schemas']['DirectImportTemplateRequestBody']
+type ValidateTemplateRequestBody = components['schemas']['ValidateTemplateRequestBody']
+type ValidateCustomImageRequestBody = components['schemas']['ValidateCustomImageRequestBody']
+type ShareTemplateBody = components['schemas']['ShareTemplateRequestBody']
 
 /** CamelCase batch operation result item (after processResponse) */
 export interface BatchResultItem {
@@ -851,33 +875,36 @@ export class ApiClient {
   /**
    * 列出沙箱
    */
-  async listSandboxes(opts: {
-    query?: SandboxQuery
-    limit?: number
-    nextToken?: string
-  } = {}): Promise<{ sandboxes: SandboxInfo[], nextToken?: string }> {
+  async listSandboxes(opts: ListSandboxesOpts = {}): Promise<ListSandboxesResult> {
     // Build query parameters according to OpenAPI schema
     type QueryParams = NonNullable<paths['/v1/sandboxes']['get']['parameters']['query']>
     const queryParams: QueryParams = {}
-    
+
     // Handle status filter - backend accepts single status string, SDK accepts array for convenience
     if (opts.query?.status && opts.query.status.length > 0) {
       // Use first status if multiple provided (backend only accepts single status)
       queryParams.status = opts.query.status[0] as QueryParams['status']
     }
-    
-    // Handle limit
+
     if (opts.limit !== undefined) {
       queryParams.limit = opts.limit
     }
-    
-    // Handle pagination - backend uses offset, SDK uses nextToken
-    // For now, nextToken is not fully implemented in backend, so we'll skip it
-    // TODO: Implement proper token-based pagination when backend supports it
-    
+    if (opts.pageSize !== undefined) {
+      queryParams.page_size = opts.pageSize
+    }
+    if (opts.page !== undefined) {
+      queryParams.page = opts.page
+    }
+    if (opts.offset !== undefined) {
+      queryParams.offset = opts.offset
+    }
+    if (opts.skip !== undefined) {
+      queryParams.skip = opts.skip
+    }
+
     // Note: metadata and templateId filters from SandboxQuery are not supported by backend API as query parameters
     // They would need to be filtered client-side or added to backend API in the future
-    
+
     const response = await this.client.GET('/v1/sandboxes', {
       params: {
         query: queryParams
@@ -890,7 +917,8 @@ export class ApiClient {
 
     // 处理响应，将 snake_case 转换为 camelCase
     const processedResponse = this.processResponse(response) as any
-    const sandboxesData = processedResponse.data?.data?.sandboxes || processedResponse.data?.sandboxes || []
+    const inner = (processedResponse.data?.data ?? processedResponse.data) as Record<string, unknown> | undefined
+    const { items: sandboxesData, pagination } = parseScaleboxListBlock(inner, 'sandboxes')
     
     // 转换每个沙箱数据
     const sandboxes = sandboxesData.map((sandbox: any) => ({
@@ -988,6 +1016,7 @@ export class ApiClient {
 
     return {
       sandboxes,
+      pagination,
       nextToken: undefined
     }
   }
@@ -1449,25 +1478,35 @@ export class ApiClient {
   // ---------------------------------------------------------------------------
 
   async listTemplates(filters?: TemplateListFilters): Promise<TemplateListResponse> {
-    const params: Record<string, string> = {}
-    if (filters?.usable === true) params.usable = 'true'
-    if (filters?.status) params.status = filters.status
-    if (filters?.visibility) params.visibility = filters.visibility
-    if (filters?.name) params.name = filters.name
-    const query = new URLSearchParams(params).toString()
-    const path = query ? `/v1/templates?${query}` : '/v1/templates'
-    const response = await this.client.GET(path as any)
+    const query: TemplatesListQuery = {}
+    if (filters?.usable === true) query.usable = true
+    if (filters?.status) query.status = filters.status
+    if (filters?.visibility) query.visibility = filters.visibility
+    if (filters?.name) query.name = filters.name
+    const search = filters?.search?.trim()
+    if (search) query.search = search
+    if (filters?.page != null) query.page = filters.page
+    if (filters?.limit != null) query.limit = filters.limit
+    if (filters?.pageSize != null) query.page_size = filters.pageSize
+    if (filters?.offset != null) query.offset = filters.offset
+    if (filters?.skip != null) query.skip = filters.skip
+
+    const response = await this.client.GET('/v1/templates', {
+      params: { query }
+    })
     if (response.error) throw new Error(formatApiError('Failed to list templates', response.error))
-    const processed = this.processResponse(response) as { data?: { data?: { templates?: unknown[]; total?: number } } }
-    const data = processed.data?.data ?? {}
+    const processed = this.processResponse(response) as { data?: { data?: Record<string, unknown> } }
+    const data = (processed.data?.data ?? {}) as Record<string, unknown>
+    const { items, pagination } = parseScaleboxListBlock(data, 'templates')
     return {
-      templates: (data.templates ?? []).map((t: unknown) => convertKeysToCamelCase(t)) as TemplateInfo[],
-      total: data.total ?? 0
+      templates: items.map((t: unknown) => convertKeysToCamelCase(t)) as TemplateInfo[],
+      total: pagination.total,
+      pagination
     }
   }
 
   async getTemplate(templateId: string): Promise<TemplateInfo> {
-    const response = await this.client.GET('/v1/templates/{template_id}' as any, {
+    const response = await this.client.GET('/v1/templates/{template_id}', {
       params: { path: { template_id: templateId } }
     })
     if (response.error) throw new Error(formatApiError('Failed to get template', response.error))
@@ -1476,49 +1515,62 @@ export class ApiClient {
   }
 
   async createTemplate(req: CreateTemplateRequest): Promise<TemplateInfo> {
-    const body = convertKeysToSnakeCase(req)
-    const response = await this.client.POST('/v1/templates' as any, { body })
+    const body = convertKeysToSnakeCase(req) as TemplateWriteBody
+    const response = await this.client.POST('/v1/templates', { body })
     if (response.error) throw new Error(formatApiError('Failed to create template', response.error))
     const processed = this.processResponse(response) as { data?: { data?: unknown } }
     return convertKeysToCamelCase(processed.data?.data ?? {}) as TemplateInfo
   }
 
   async updateTemplate(templateId: string, req: UpdateTemplateRequest): Promise<TemplateInfo> {
-    const body = convertKeysToSnakeCase(req)
-    const response = await this.client.PUT('/v1/templates/{template_id}' as any, {
+    const body = convertKeysToSnakeCase(req) as TemplateWriteBody
+    const response = await this.client.PUT('/v1/templates/{template_id}', {
       params: { path: { template_id: templateId } },
       body
     })
     if (response.error) throw new Error(formatApiError('Failed to update template', response.error))
-    const processed = this.processResponse(response) as { data?: { data?: unknown } }
-    return convertKeysToCamelCase(processed.data?.data ?? {}) as TemplateInfo
+    const processed = this.processResponse(response) as { data?: { data?: Record<string, unknown> } }
+    const rawData = processed.data?.data ?? {}
+    // Some deployments wrap the template under a `template` key; unwrap when present.
+    const templatePayload = rawData.template ?? rawData
+    return convertKeysToCamelCase(templatePayload) as TemplateInfo
   }
 
   async deleteTemplate(templateId: string): Promise<void> {
-    const response = await this.client.DELETE('/v1/templates/{template_id}' as any, {
+    const response = await this.client.DELETE('/v1/templates/{template_id}', {
       params: { path: { template_id: templateId } }
     })
     if (response.error) throw new Error(formatApiError('Failed to delete template', response.error))
   }
 
-  async updateTemplateStatus(templateId: string, data: UpdateTemplateStatusRequest): Promise<TemplateInfo> {
-    const body = convertKeysToSnakeCase(data)
-    const response = await this.client.PUT('/v1/templates/{template_id}/status' as any, {
+  async updateTemplateStatus(
+    templateId: string,
+    data: UpdateTemplateStatusRequest
+  ): Promise<TemplateStatusUpdateResponse> {
+    const body = convertKeysToSnakeCase(data) as components['schemas']['UpdateTemplateStatusRequestBody']
+    const response = await this.client.PUT('/v1/templates/{template_id}/status', {
       params: { path: { template_id: templateId } },
       body
     })
     if (response.error) throw new Error(formatApiError('Failed to update template status', response.error))
     const processed = this.processResponse(response) as { data?: { data?: unknown } }
-    return convertKeysToCamelCase(processed.data?.data ?? {}) as TemplateInfo
+    return convertKeysToCamelCase(processed.data?.data ?? {}) as TemplateStatusUpdateResponse
   }
 
-  async validateTemplate(templateId: string): Promise<unknown> {
-    const response = await this.client.POST('/v1/templates/{template_id}/validate' as any, {
-      params: { path: { template_id: templateId } }
+  async validateTemplate(
+    templateId: string,
+    body?: ValidateTemplateRequest
+  ): Promise<ValidateTemplateResponse> {
+    // Backend requires `harbor_image_url`; an omitted body mirrors the pre-iteration
+    // no-body behavior (which always 400'd) rather than breaking the signature.
+    const reqBody = body ? convertKeysToSnakeCase(body) as ValidateTemplateRequestBody : ({} as ValidateTemplateRequestBody)
+    const response = await this.client.POST('/v1/templates/{template_id}/validate', {
+      params: { path: { template_id: templateId } },
+      body: reqBody
     })
     if (response.error) throw new Error(formatApiError('Failed to validate template', response.error))
     const processed = this.processResponse(response) as { data?: { data?: unknown } }
-    return processed.data?.data
+    return convertKeysToCamelCase(processed.data?.data ?? {}) as ValidateTemplateResponse
   }
 
   async getTemplateDockerfile(templateId: string): Promise<string> {
@@ -1536,7 +1588,7 @@ export class ApiClient {
   }
 
   async getTemplateChain(templateId: string): Promise<TemplateChainResponse> {
-    const response = await this.client.GET('/v1/templates/{template_id}/chain' as any, {
+    const response = await this.client.GET('/v1/templates/{template_id}/chain', {
       params: { path: { template_id: templateId } }
     })
     if (response.error) throw new Error(formatApiError('Failed to get template chain', response.error))
@@ -1548,36 +1600,39 @@ export class ApiClient {
     }
   }
 
-  async getPrivateImageStorageUsage(): Promise<unknown> {
-    const response = await this.client.GET('/v1/templates/storage-usage' as any)
+  async getPrivateImageStorageUsage(): Promise<PrivateImageStorageUsage> {
+    const response = await this.client.GET('/v1/templates/storage-usage')
     if (response.error) throw new Error(formatApiError('Failed to get storage usage', response.error))
     const processed = this.processResponse(response) as { data?: { data?: unknown } }
-    return processed.data?.data
+    return convertKeysToCamelCase(processed.data?.data ?? {}) as PrivateImageStorageUsage
   }
 
-  async shareTemplate(templateId: string, opts?: ShareTemplateRequest): Promise<TemplateInfo> {
-    const body = opts ? convertKeysToSnakeCase(opts) : undefined
-    const response = await this.client.POST('/v1/templates/{template_id}/share' as any, {
+  async shareTemplate(
+    templateId: string,
+    opts?: ShareTemplateRequest
+  ): Promise<TemplateShareOperationResponse> {
+    const body = opts ? (convertKeysToSnakeCase(opts) as ShareTemplateBody) : undefined
+    const response = await this.client.POST('/v1/templates/{template_id}/share', {
       params: { path: { template_id: templateId } },
       body
     })
     if (response.error) throw new Error(formatApiError('Failed to share template', response.error))
     const processed = this.processResponse(response) as { data?: { data?: unknown } }
-    return convertKeysToCamelCase(processed.data?.data ?? {}) as TemplateInfo
+    return convertKeysToCamelCase(processed.data?.data ?? {}) as TemplateShareOperationResponse
   }
 
-  async unshareTemplate(templateId: string): Promise<TemplateInfo> {
-    const response = await this.client.POST('/v1/templates/{template_id}/unshare' as any, {
+  async unshareTemplate(templateId: string): Promise<TemplateShareOperationResponse> {
+    const response = await this.client.POST('/v1/templates/{template_id}/unshare', {
       params: { path: { template_id: templateId } }
     })
     if (response.error) throw new Error(formatApiError('Failed to unshare template', response.error))
     const processed = this.processResponse(response) as { data?: { data?: unknown } }
-    return convertKeysToCamelCase(processed.data?.data ?? {}) as TemplateInfo
+    return convertKeysToCamelCase(processed.data?.data ?? {}) as TemplateShareOperationResponse
   }
 
   async validateCustomImage(req: ValidateCustomImageRequest): Promise<ValidateCustomImageResponse> {
-    const body = convertKeysToSnakeCase(req)
-    const response = await this.client.POST('/v1/templates/validate-custom-image' as any, { body })
+    const body = convertKeysToSnakeCase(req) as ValidateCustomImageRequestBody
+    const response = await this.client.POST('/v1/templates/validate-custom-image', { body })
     if (response.error) {
       const err = response.error as { valid?: boolean; data?: unknown; detail?: unknown }
       if (typeof err === 'object' && (err.valid === false || (err.data != null && typeof err.data === 'object'))) {
@@ -1590,24 +1645,24 @@ export class ApiClient {
   }
 
   async directImportTemplate(req: DirectImportTemplateRequest): Promise<DirectImportTemplateResponse> {
-    const body = convertKeysToSnakeCase(req)
-    const response = await this.client.POST('/v1/templates/import' as any, { body })
+    const body = convertKeysToSnakeCase(req) as DirectImportRequestBody
+    const response = await this.client.POST('/v1/templates/import', { body })
     if (response.error) throw new Error(formatApiError('Failed to start direct import', response.error))
     const processed = this.processResponse(response) as { data?: { data?: unknown } }
     return convertKeysToCamelCase(processed.data?.data ?? {}) as DirectImportTemplateResponse
   }
 
-  async importExistingTemplate(templateId: string): Promise<{ message?: string }> {
-    const response = await this.client.POST('/v1/templates/{template_id}/import' as any, {
+  async importExistingTemplate(templateId: string): Promise<ImportExistingTemplateResponse> {
+    const response = await this.client.POST('/v1/templates/{template_id}/import', {
       params: { path: { template_id: templateId } }
     })
     if (response.error) throw new Error(formatApiError('Failed to start template import', response.error))
     const processed = this.processResponse(response) as { data?: { data?: unknown } }
-    return convertKeysToCamelCase(processed.data?.data ?? {}) as { message?: string }
+    return convertKeysToCamelCase(processed.data?.data ?? {}) as ImportExistingTemplateResponse
   }
 
   async getTemplateImportStatus(templateId: string): Promise<TemplateImportStatusResponse> {
-    const response = await this.client.GET('/v1/templates/{template_id}/import' as any, {
+    const response = await this.client.GET('/v1/templates/{template_id}/import', {
       params: { path: { template_id: templateId } }
     })
     if (response.error) throw new Error(formatApiError('Failed to get template import status', response.error))
@@ -1616,7 +1671,7 @@ export class ApiClient {
   }
 
   async cancelTemplateImport(templateId: string): Promise<{ jobId: string; status: string; message?: string }> {
-    const response = await this.client.DELETE('/v1/templates/{template_id}/import' as any, {
+    const response = await this.client.DELETE('/v1/templates/{template_id}/import', {
       params: { path: { template_id: templateId } }
     })
     if (response.error) throw new Error(formatApiError('Failed to cancel template import', response.error))
@@ -1625,7 +1680,7 @@ export class ApiClient {
   }
 
   async getImportJobByID(jobId: string): Promise<ImportJobInfo> {
-    const response = await this.client.GET('/v1/import-jobs/{job_id}' as any, {
+    const response = await this.client.GET('/v1/import-jobs/{job_id}', {
       params: { path: { job_id: jobId } }
     })
     if (response.error) throw new Error(formatApiError('Failed to get import job', response.error))
@@ -1634,27 +1689,35 @@ export class ApiClient {
   }
 
   async listImportJobs(opts?: ListImportJobsOpts): Promise<ListImportJobsResponse> {
-    const params: Record<string, string> = {}
-    if (opts?.limit != null) params.limit = String(opts.limit)
-    if (opts?.offset != null) params.offset = String(opts.offset)
-    if (opts?.status) params.status = opts.status
-    if (opts?.templateId) params.template_id = opts.templateId
-    const query = new URLSearchParams(params).toString()
-    const path = query ? `/v1/import-jobs?${query}` : '/v1/import-jobs'
-    const response = await this.client.GET(path as any)
+    const query: ImportJobsListQuery = {}
+    if (opts?.limit != null) query.limit = opts.limit
+    if (opts?.offset != null) query.offset = opts.offset
+    if (opts?.page != null) query.page = opts.page
+    if (opts?.skip != null) query.skip = opts.skip
+    if (opts?.status) query.status = opts.status
+    if (opts?.templateId) query.template_id = opts.templateId
+
+    const response = await this.client.GET('/v1/import-jobs', {
+      params: { query }
+    })
     if (response.error) throw new Error(formatApiError('Failed to list import jobs', response.error))
-    const processed = this.processResponse(response) as { data?: { data?: { jobs?: unknown[]; total?: number; limit?: number; offset?: number } } }
-    const data = processed.data?.data ?? {}
+    const processed = this.processResponse(response) as { data?: { data?: Record<string, unknown> } }
+    const data = (processed.data?.data ?? {}) as Record<string, unknown>
+    const { items, pagination } = parseScaleboxListBlock(data, 'jobs', {
+      limit: data.limit,
+      offset: data.offset
+    })
     return {
-      jobs: (data.jobs ?? []).map((j: unknown) => convertKeysToCamelCase(j)) as ImportJobInfo[],
-      total: data.total ?? 0,
-      limit: data.limit ?? 20,
-      offset: data.offset ?? 0
+      jobs: items.map((j: unknown) => convertKeysToCamelCase(j)) as ImportJobInfo[],
+      total: pagination.total,
+      limit: pagination.limit,
+      offset: pagination.offset,
+      pagination
     }
   }
 
   async cancelImportJob(jobId: string): Promise<{ jobId: string; status: string; message?: string }> {
-    const response = await this.client.DELETE('/v1/import-jobs/{job_id}' as any, {
+    const response = await this.client.DELETE('/v1/import-jobs/{job_id}', {
       params: { path: { job_id: jobId } }
     })
     if (response.error) throw new Error(formatApiError('Failed to cancel import job', response.error))
