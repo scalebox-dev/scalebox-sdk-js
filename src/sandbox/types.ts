@@ -2,6 +2,8 @@
  * Sandbox-related type definitions
  */
 
+import type { ScaleboxListPagination } from '../api/pagination'
+
 // Import necessary types from sandboxApi.ts
 export type { SandboxOpts, SandboxApiOpts, SandboxListOpts, SandboxMetricsOpts } from './sandboxApi'
 
@@ -141,6 +143,32 @@ export interface SandboxQuery {
   templateId?: string
 }
 
+/** Options for {@link ApiClient.listSandboxes} (offset / page aligned with backend listparams). */
+export interface ListSandboxesOpts {
+  query?: SandboxQuery
+  limit?: number
+  /** Alias for `limit` (query `page_size`). */
+  pageSize?: number
+  /** 1-based page index (query `page`). */
+  page?: number
+  /** Row offset (query `offset`). When set with `page`, backend prefers offset. */
+  offset?: number
+  /** Alias for `offset` (query `skip`). */
+  skip?: number
+  /**
+   * @deprecated Not used by the backend. Prefer `page` / `offset` and `pagination` on the result.
+   */
+  nextToken?: string
+}
+
+export interface ListSandboxesResult {
+  sandboxes: SandboxInfo[]
+  pagination: ScaleboxListPagination
+  /**
+   * @deprecated Always undefined; use `pagination` for paging.
+   */
+  nextToken?: string
+}
 
 export interface SandboxConnectOpts {
   sandboxId?: string

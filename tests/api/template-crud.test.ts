@@ -19,6 +19,8 @@ describe('API Client - Template CRUD', () => {
       const res = await client!.listTemplates()
       expect(res).toHaveProperty('templates')
       expect(res).toHaveProperty('total')
+      expect(res).toHaveProperty('pagination')
+      expect(res.pagination.total).toBe(res.total)
       expect(Array.isArray(res.templates)).toBe(true)
       if (res.templates.length > 0) {
         const t = res.templates[0]
@@ -99,16 +101,16 @@ describe('API Client - Template CRUD', () => {
     })
 
     it('should create template from sandbox then deleteTemplate', async () => {
-      const list = await client!.listTemplates({ usable: true })
-      const templateForSandbox = list.templates.length > 0 ? list.templates[0].templateId : 'base'
+      // Use 'base' template directly — warm pool covers it, avoids cold-start timeouts
       const created = await client!.createSandbox({
-        template: templateForSandbox,
+        template: 'base',
         timeout: 300,
-        metadata: { test: 'template-crud' }
+        metadata: { test: 'template-crud' },
+        isAsync: true
       })
       sandboxId = created.sandboxId
 
-      await client!.waitUntilStatus(sandboxId, ['running', 'failed'], { timeoutMs: 120_000 })
+      await client!.waitUntilStatus(sandboxId, ['running', 'failed'], { timeoutMs: 180_000 })
       const sandbox = await client!.getSandbox(sandboxId)
       if (sandbox.status !== 'running') {
         return

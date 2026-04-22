@@ -233,8 +233,8 @@ describe('File Upload and Download', () => {
     
     fs.writeFileSync(largeFilePath, largeContent)
     
-    // Upload large file
-    await sandbox.uploadFile(largeFilePath, remotePath)
+    // Upload large file (increase request timeout for 10MB)
+    await sandbox.uploadFile(largeFilePath, remotePath, { requestTimeoutMs: 120_000 })
     
     // Verify file exists at actual storage location
     const actualDir = path.dirname(remotePath)
@@ -248,7 +248,7 @@ describe('File Upload and Download', () => {
     expect(Number(largeFile!.size)).toBe(largeContent.length)
     
     // Download large file
-    const result = await sandbox.downloadFile(remotePath, downloadLargePath)
+    const result = await sandbox.downloadFile(remotePath, downloadLargePath, { requestTimeoutMs: 120_000 })
     
     expect(result.size).toBe(largeContent.length)
     

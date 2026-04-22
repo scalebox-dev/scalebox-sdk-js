@@ -3,12 +3,17 @@
  * Aligned with back-end/internal/models/template.go and back-end/internal/api/templates.go.
  */
 
+import type { ScaleboxListPagination } from '../api/pagination'
+
 export type TemplateStatus = 'pending' | 'building' | 'pushing' | 'available' | 'failed'
 export type TemplateVisibility = 'private' | 'account_shared' | 'public'
 export type TemplateSource = 'scalebox_family' | 'custom'
 export type CustomImageSource = 'external' | 'imported'
 
 export type ImportJobStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
+
+/** `GET /v1/import-jobs` status filter; `ongoing` matches pending or running jobs on the server. */
+export type ImportJobListStatusFilter = ImportJobStatus | 'ongoing'
 
 export interface TemplatePortConfig {
   port: number
@@ -60,7 +65,10 @@ export interface TemplateInfo {
 /**
  * Start command (custom_command) for custom templates must be JSON exec form:
  * {"Entrypoint": ["/path"], "Cmd": ["arg1", "arg2"]}. Plain text is rejected.
- * ready_command is plain text (e.g. "curl -sf http://localhost:80/ || exit 1").
+ * ready_command must be a JSON object with "type" (exec, httpGet, or tcpSocket):
+ *   exec:      {"type": "exec", "command": "curl -sf http://localhost:80/ || exit 1"}
+ *   httpGet:   {"type": "httpGet", "port": 80, "path": "/"}
+ *   tcpSocket: {"type": "tcpSocket", "port": 6379}
  */
 export interface CreateTemplateRequest {
   name: string
@@ -109,9 +117,50 @@ export interface UpdateTemplateStatusRequest {
   harborImageUrl?: string
 }
 
+export interface PrivateImageStorageUsage {
+  usedGb: number
+  limitGb: number
+  percentage: number
+}
+
+export interface ValidateTemplateRequest {
+  harborImageUrl: string
+}
+
+export interface ValidateTemplateResponse {
+  message: string
+  templateId: string
+  buildStatus: string
+  harborImageUrl?: string | null
+}
+
+export interface TemplateStatusUpdateResponse {
+  message: string
+  templateId: string
+  buildStatus: string
+}
+
+export interface TemplateShareOperationResponse {
+  templateId: string
+  visibility: TemplateVisibility
+  harborProject: string
+  harborImageUrl?: string | null
+  message: string
+}
+
+export interface ImportExistingTemplateResponse {
+  jobId: string
+  templateId: string
+  status: string
+  externalImageUrl?: string | null
+  harborImageUrl?: string | null
+  createdAt?: string
+  message: string
+}
+
 /**
  * directImportTemplate: custom_command must be JSON {"Entrypoint": string[], "Cmd": string[]};
- * ready_command is plain text.
+ * ready_command must be a JSON object (see CreateTemplateRequest for format).
  */
 export interface DirectImportTemplateRequest {
   name: string
@@ -154,11 +203,25 @@ export interface TemplateListFilters {
   status?: TemplateStatus
   visibility?: TemplateVisibility
   name?: string
+  /** Partial match on name and description (backend `search` query). */
+  search?: string
+  /** 1-based page index (backend `page`). */
+  page?: number
+  /** Page size (backend `limit`). */
+  limit?: number
+  /** Alias for `limit` (backend `page_size`). */
+  pageSize?: number
+  /** Row offset (backend `offset`); takes precedence over `page` when both are sent. */
+  offset?: number
+  /** Alias for `offset` (backend `skip`). */
+  skip?: number
 }
 
 export interface TemplateListResponse {
   templates: TemplateInfo[]
+  /** Total row count; equal to `pagination.total`. */
   total: number
+  pagination: ScaleboxListPagination
 }
 
 export interface TemplateChainItem {
@@ -185,6 +248,7 @@ export interface ImportJobInfo {
   updatedAt?: string
   lastLogMessage?: string
   errorMessage?: string
+  skopeoLogs?: string
   retryCount?: number
   maxRetries?: number
 }
@@ -199,7 +263,9 @@ export interface TemplateImportStatusResponse {
   createdAt?: string
   startedAt?: string
   completedAt?: string
+  lastLogMessage?: string
   errorMessage?: string
+  skopeoLogs?: string
 }
 
 export interface DirectImportTemplateResponse {
@@ -217,13 +283,19 @@ export interface DirectImportTemplateResponse {
 export interface ListImportJobsOpts {
   limit?: number
   offset?: number
-  status?: ImportJobStatus
+  /** 1-based page index (backend `page`). */
+  page?: number
+  /** Alias for `offset` (backend `skip`). */
+  skip?: number
+  status?: ImportJobListStatusFilter
   templateId?: string
 }
 
 export interface ListImportJobsResponse {
   jobs: ImportJobInfo[]
+  /** Total row count; equal to `pagination.total`. */
   total: number
   limit: number
   offset: number
+  pagination: ScaleboxListPagination
 }

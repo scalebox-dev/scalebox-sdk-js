@@ -184,22 +184,19 @@ describe('Sandbox Timeout Preservation', () => {
     await sandbox.betaPause()
     console.log('  ✓ Sandbox paused')
     
-    await sandbox.connect() // Should resume with default timeout
+    await sandbox.connect() // Should resume preserving original timeout
     console.log('  ✓ Sandbox resumed')
     
     const reconnectedInfo = await sandbox.getInfo()
     const reconnectedTimeout = reconnectedInfo.timeout
     console.log(`  ✓ Timeout after resume: ${reconnectedTimeout}s`)
     
-    // When resuming, timeout should be reset to default (5 minutes) to avoid immediate timeout
+    // When resuming without explicit timeout, backend preserves the original TimeoutSeconds.
+    // The timeout should still be around 25 minutes (1500s), not reset to 5 minutes.
     expect(reconnectedTimeout).toBeDefined()
+    expect(reconnectedTimeout!).toBeGreaterThan(1400) // ~25 minutes preserved
     
-    // The timeout should be around 5 minutes (300 seconds), not the original 25 minutes
-    // This is expected behavior to prevent timeout after long pause periods
-    expect(reconnectedTimeout!).toBeGreaterThan(250) // At least 4+ minutes
-    expect(reconnectedTimeout!).toBeLessThan(400) // Less than 7 minutes
-    
-    console.log(`✅ Instance connect() correctly set new timeout on resume: ${reconnectedTimeout}s`)
+    console.log(`✅ Instance connect() preserved timeout on resume: ${reconnectedTimeout}s`)
   }, DEFAULT_TIMEOUT * 2)
 
   it('should allow custom timeout when resuming paused sandbox', async () => {

@@ -94,12 +94,30 @@ paths:
           in: query
           schema:
             type: integer
-          description: Maximum number of results
+          description: Maximum number of results per page
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+          description: Alias for limit (page size)
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+          description: 1-based page index (default 1). When offset or skip is set, the effective page is derived on the server.
         - name: offset
           in: query
           schema:
             type: integer
-          description: Number of results to skip
+            minimum: 0
+          description: Number of rows to skip before returning results
+        - name: skip
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+          description: Alias for offset
       responses:
         '200':
           description: List of sandboxes
@@ -109,12 +127,7 @@ paths:
                 type: object
                 properties:
                   data:
-                    type: object
-                    properties:
-                      sandboxes:
-                        type: array
-                        items:
-                          $ref: '#/components/schemas/SandboxResponse'
+                    $ref: '#/components/schemas/ListSandboxesResponseData'
         '401':
           description: Unauthorized
           content:
@@ -935,6 +948,676 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /v1/templates:
+    get:
+      summary: List templates
+      tags:
+        - Templates
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: usable
+          in: query
+          schema:
+            type: boolean
+          description: When true, return only templates usable for sandbox creation
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, building, pushing, available, failed]
+        - name: visibility
+          in: query
+          schema:
+            type: string
+            enum: [private, account_shared, public]
+        - name: name
+          in: query
+          schema:
+            type: string
+          description: Exact template name match
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Partial match on name and description
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+        - name: skip
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+      responses:
+        '200':
+          description: Paginated template list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ListTemplatesResponseData'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      summary: Create template
+      tags:
+        - Templates
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TemplateWriteRequestBody'
+      responses:
+        '201':
+          description: Template created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/TemplateRecord'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/templates/storage-usage:
+    get:
+      summary: Private image storage usage
+      tags:
+        - Templates
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Storage usage payload
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/PrivateImageStorageUsageData'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/templates/import:
+    post:
+      summary: Start direct template import from external image
+      tags:
+        - Templates
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DirectImportTemplateRequestBody'
+      responses:
+        '202':
+          description: Template created and import accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/DirectImportAcceptedResponseData'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/templates/validate-custom-image:
+    post:
+      summary: Validate a custom container image
+      tags:
+        - Templates
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ValidateCustomImageRequestBody'
+      responses:
+        '200':
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ValidateCustomImageSuccessData'
+        '400':
+          description: Image validation failed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/ValidateCustomImageErrorData'
+                  message:
+                    type: string
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/templates/{template_id}:
+    parameters:
+      - name: template_id
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      summary: Get template by ID
+      tags:
+        - Templates
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Template
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/TemplateRecord'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      summary: Update template
+      tags:
+        - Templates
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TemplateWriteRequestBody'
+      responses:
+        '200':
+          description: Updated template (data contains a `template` object)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/UpdateTemplateResponseData'
+                  message:
+                    type: string
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      summary: Delete template
+      tags:
+        - Templates
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    nullable: true
+                  message:
+                    type: string
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/templates/{template_id}/status:
+    put:
+      summary: Update template build status
+      tags:
+        - Templates
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: template_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTemplateStatusRequestBody'
+      responses:
+        '200':
+          description: Template status update result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/TemplateStatusUpdateResponseData'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/templates/{template_id}/validate:
+    post:
+      summary: Validate template configuration
+      tags:
+        - Templates
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: template_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ValidateTemplateRequestBody'
+      responses:
+        '200':
+          description: Validation payload
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ValidateTemplateResponseData'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/templates/{template_id}/dockerfile:
+    get:
+      summary: Get generated Dockerfile (plain text)
+      tags:
+        - Templates
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: template_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: download
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Dockerfile
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/templates/{template_id}/chain:
+    get:
+      summary: Get template inheritance chain
+      tags:
+        - Templates
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: template_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Chain response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/TemplateChainResponseData'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/templates/{template_id}/share:
+    post:
+      summary: Share template
+      tags:
+        - Templates
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: template_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShareTemplateRequestBody'
+      responses:
+        '200':
+          description: Updated template
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/TemplateShareOperationData'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/templates/{template_id}/unshare:
+    post:
+      summary: Unshare template
+      tags:
+        - Templates
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: template_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Updated template
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/TemplateShareOperationData'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/templates/{template_id}/import:
+    parameters:
+      - name: template_id
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      summary: Start import for an existing template record
+      tags:
+        - Templates
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '202':
+          description: Import job accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/TemplateImportStartAcceptedData'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    get:
+      summary: Get template import status
+      tags:
+        - Templates
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Import status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/TemplateImportStatusData'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      summary: Cancel template import
+      tags:
+        - Templates
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Cancelled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/TemplateImportCancelData'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/import-jobs:
+    get:
+      summary: List import jobs for current user
+      tags:
+        - ImportJobs
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+        - name: skip
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, running, completed, failed, cancelled, ongoing]
+          description: Filter by job status; `ongoing` matches pending or running jobs
+        - name: template_id
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Paginated import jobs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ListImportJobsResponseData'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/import-jobs/{job_id}:
+    parameters:
+      - name: job_id
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      summary: Get import job by ID
+      tags:
+        - ImportJobs
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Import job
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ImportJobDetailData'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      summary: Cancel import job by ID
+      tags:
+        - ImportJobs
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Cancelled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/TemplateImportCancelData'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
 components:
   securitySchemes:
     ApiKeyAuth:
@@ -1577,6 +2260,500 @@ components:
           type: string
         data:
           type: object
+
+    ListPagination:
+      type: object
+      description: |
+        Pagination envelope nested under `data` for list endpoints (canonical Scalebox list contract).
+        Query parameters are parsed with `page` (1-based), `limit` or `page_size`, and `offset` or `skip`.
+      required:
+        - page
+        - limit
+        - total
+        - total_pages
+      properties:
+        page:
+          type: integer
+          minimum: 1
+          description: Current 1-based page index
+        limit:
+          type: integer
+          minimum: 1
+          description: Page size used for this response
+        total:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Total number of rows matching the list query
+        total_pages:
+          type: integer
+          minimum: 0
+          description: Total number of pages for this limit
+        offset:
+          type: integer
+          minimum: 0
+          description: Row offset of the current page
+
+    ListSandboxesResponseData:
+      type: object
+      required:
+        - sandboxes
+        - pagination
+      properties:
+        sandboxes:
+          type: array
+          items:
+            $ref: '#/components/schemas/SandboxResponse'
+        pagination:
+          $ref: '#/components/schemas/ListPagination'
+
+    ListTemplatesResponseData:
+      type: object
+      required:
+        - templates
+        - pagination
+      properties:
+        templates:
+          type: array
+          items:
+            $ref: '#/components/schemas/TemplateRecord'
+        pagination:
+          $ref: '#/components/schemas/ListPagination'
+
+    ListImportJobsResponseData:
+      type: object
+      required:
+        - jobs
+        - pagination
+      properties:
+        jobs:
+          type: array
+          items:
+            $ref: '#/components/schemas/ImportJobListItem'
+        pagination:
+          $ref: '#/components/schemas/ListPagination'
+
+    PrivateImageStorageUsageData:
+      type: object
+      required:
+        - used_gb
+        - limit_gb
+        - percentage
+      properties:
+        used_gb:
+          type: number
+          format: double
+        limit_gb:
+          type: number
+          format: double
+        percentage:
+          type: number
+          format: double
+
+    ValidateTemplateRequestBody:
+      type: object
+      required:
+        - harbor_image_url
+      properties:
+        harbor_image_url:
+          type: string
+
+    ValidateTemplateResponseData:
+      type: object
+      required:
+        - message
+        - template_id
+        - build_status
+      properties:
+        message:
+          type: string
+        template_id:
+          type: string
+        build_status:
+          type: string
+        harbor_image_url:
+          type: string
+          nullable: true
+
+    UpdateTemplateStatusRequestBody:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: [pending, building, pushing, available, failed]
+        error_message:
+          type: string
+        push_logs:
+          type: string
+        harbor_image_url:
+          type: string
+
+    TemplateStatusUpdateResponseData:
+      type: object
+      required:
+        - message
+        - template_id
+        - build_status
+      properties:
+        message:
+          type: string
+        template_id:
+          type: string
+        build_status:
+          type: string
+
+    UpdateTemplateResponseData:
+      type: object
+      required:
+        - template
+      properties:
+        template:
+          $ref: '#/components/schemas/TemplateRecord'
+
+    ValidateCustomImageRequestBody:
+      type: object
+      required:
+        - image_url
+      properties:
+        image_url:
+          type: string
+        username:
+          type: string
+          nullable: true
+        password:
+          type: string
+          nullable: true
+
+    ValidateCustomImageSuccessData:
+      type: object
+      required:
+        - valid
+      properties:
+        valid:
+          type: boolean
+        message:
+          type: string
+        size_bytes:
+          type: integer
+          format: int64
+        size_gb:
+          type: number
+          format: double
+        cmd:
+          type: array
+          items:
+            type: string
+        entrypoint:
+          type: array
+          items:
+            type: string
+
+    ValidateCustomImageErrorData:
+      type: object
+      required:
+        - valid
+        - error
+      properties:
+        valid:
+          type: boolean
+          enum: [false]
+        error:
+          type: string
+
+    DirectImportTemplateRequestBody:
+      type: object
+      required:
+        - name
+        - external_image_url
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        external_image_url:
+          type: string
+        external_registry_username:
+          type: string
+          nullable: true
+        external_registry_password:
+          type: string
+          nullable: true
+        default_cpu_count:
+          type: integer
+        default_memory_mb:
+          type: integer
+        visibility:
+          type: string
+          enum: [private, account_shared, public]
+        ports:
+          type: string
+        custom_command:
+          type: string
+          nullable: true
+        ready_command:
+          type: string
+          nullable: true
+
+    DirectImportAcceptedResponseData:
+      type: object
+      required:
+        - template_id
+        - name
+        - visibility
+      properties:
+        template_id:
+          type: string
+        name:
+          type: string
+        visibility:
+          type: string
+        job_id:
+          type: string
+        status:
+          type: string
+        external_image_url:
+          type: string
+          nullable: true
+        harbor_image_url:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        message:
+          type: string
+
+    TemplateImportStartAcceptedData:
+      type: object
+      required:
+        - job_id
+        - template_id
+        - status
+        - message
+      properties:
+        job_id:
+          type: string
+        template_id:
+          type: string
+        status:
+          type: string
+        external_image_url:
+          type: string
+          nullable: true
+        harbor_image_url:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        message:
+          type: string
+
+    TemplateImportStatusData:
+      type: object
+      required:
+        - job_id
+        - template_id
+        - status
+      properties:
+        job_id:
+          type: string
+        template_id:
+          type: string
+        status:
+          type: string
+        progress_percentage:
+          type: integer
+        external_image_url:
+          type: string
+          nullable: true
+        harbor_image_url:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        started_at:
+          type: string
+          format: date-time
+          nullable: true
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        last_log_message:
+          type: string
+          nullable: true
+        error_message:
+          type: string
+          nullable: true
+        skopeo_logs:
+          type: string
+          nullable: true
+
+    TemplateImportCancelData:
+      type: object
+      required:
+        - job_id
+        - status
+        - message
+      properties:
+        job_id:
+          type: string
+        status:
+          type: string
+        message:
+          type: string
+
+    TemplateShareOperationData:
+      type: object
+      required:
+        - template_id
+        - visibility
+        - message
+      properties:
+        template_id:
+          type: string
+        visibility:
+          type: string
+        harbor_project:
+          type: string
+        harbor_image_url:
+          type: string
+          nullable: true
+        message:
+          type: string
+
+    ImportJobListItem:
+      type: object
+      required:
+        - job_id
+        - template_id
+        - status
+      properties:
+        job_id:
+          type: string
+        template_id:
+          type: string
+        status:
+          type: string
+        progress_percentage:
+          type: integer
+        external_image_url:
+          type: string
+          nullable: true
+        harbor_image_url:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        started_at:
+          type: string
+          format: date-time
+          nullable: true
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        error_message:
+          type: string
+          nullable: true
+      additionalProperties: true
+
+    ImportJobDetailData:
+      type: object
+      required:
+        - job_id
+        - template_id
+        - status
+      properties:
+        job_id:
+          type: string
+        template_id:
+          type: string
+        status:
+          type: string
+        progress_percentage:
+          type: integer
+        external_image_url:
+          type: string
+          nullable: true
+        harbor_image_url:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        started_at:
+          type: string
+          format: date-time
+          nullable: true
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        updated_at:
+          type: string
+          format: date-time
+          nullable: true
+        last_log_message:
+          type: string
+          nullable: true
+        error_message:
+          type: string
+          nullable: true
+        skopeo_logs:
+          type: string
+          nullable: true
+        retry_count:
+          type: integer
+        max_retries:
+          type: integer
+      additionalProperties: true
+
+    TemplateRecord:
+      type: object
+      additionalProperties: true
+      description: Template or import-related JSON object (snake_case from API; SDK normalizes keys)
+
+    ImportJobRecord:
+      type: object
+      additionalProperties: true
+      description: Deprecated alias for loose import job objects; prefer ImportJobListItem or ImportJobDetailData
+
+    TemplateWriteRequestBody:
+      type: object
+      additionalProperties: true
+      description: Request body with snake_case fields for template APIs
+
+    TemplateChainItem:
+      type: object
+      properties:
+        template_id:
+          type: string
+        name:
+          type: string
+        visibility:
+          type: string
+
+    TemplateChainResponseData:
+      type: object
+      properties:
+        chain:
+          type: array
+          items:
+            $ref: '#/components/schemas/TemplateChainItem'
+        depth:
+          type: integer
+
+    ShareTemplateRequestBody:
+      type: object
+      properties:
+        new_name:
+          type: string
 
     PortConfig:
       type: object

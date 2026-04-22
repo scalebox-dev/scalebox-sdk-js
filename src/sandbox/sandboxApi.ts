@@ -255,8 +255,20 @@ export interface SandboxListOpts {
    */
   limit?: number
 
+  /** Alias for `limit` (query `page_size`). */
+  pageSize?: number
+
+  /** 1-based page index (query `page`). */
+  page?: number
+
+  /** Row offset (query `offset`). */
+  offset?: number
+
+  /** Alias for `offset` (query `skip`). */
+  skip?: number
+
   /**
-   * Token to the next page.
+   * @deprecated Not used by the backend; {@link SandboxPaginator} uses `page` instead.
    */
   nextToken?: string
 }

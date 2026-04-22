@@ -76,14 +76,16 @@ describe('API Client', () => {
 
   it('should list sandboxes', async () => {
     const result = await client.listSandboxes({
-      limit: 10,
-      nextToken: undefined
+      limit: 10
     })
     
     expect(result).toBeDefined()
     expect(result.sandboxes).toBeDefined()
     expect(Array.isArray(result.sandboxes)).toBe(true)
     expect(result.sandboxes.length).toBeGreaterThan(0)
+    expect(result.pagination).toBeDefined()
+    expect(result.pagination.total).toBeGreaterThan(0)
+    expect(result.pagination.limit).toBeGreaterThan(0)
     
     // Verify the structure of sandbox objects
     if (result.sandboxes.length > 0) {
